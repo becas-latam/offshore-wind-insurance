@@ -24,7 +24,24 @@
       "Bash(npx:*)",
       "Bash(firebase projects:list)",
       "Bash(firebase use:*)",
-      "Bash(firebase deploy:*)"
+      "Bash(firebase deploy:*)",
+      "Bash(python:*)",
+      "Bash(ls /c/Python3*/python.exe)",
+      "Read(//c/Program Files/**)",
+      "Bash(/c/Python311/python.exe --version)",
+      "Bash(/c/Python310/python.exe --version)",
+      "Bash(/c/Python311/python.exe python_functions/parsers/transcript_parser.py \"/c/Users/User/Dropbox/Know/Protokollen ABU/Protokollen/Betrieb b1 b2 hs/ALB und HS/03092024 HS OSS Schaden Gespräch mit Timo.txt\" 2>&1)",
+      "Bash(/c/Python311/python.exe python_functions/parsers/transcript_parser.py \"/c/Users/User/Dropbox/Know/Protokollen ABU/Protokollen/Betrieb b1 b2 hs/ALB und HS/05062024 ALB OAR GF.srt\" 2>&1)",
+      "Bash(/c/Python311/python.exe python_functions/parsers/transcript_parser.py \"/c/Users/User/Dropbox/Know/Protokollen ABU/Protokollen/claims/05072024 Claims JF.txt\" 2>&1)",
+      "Bash(/c/Python311/python.exe python_functions/parsers/transcript_parser.py \"/c/Users/User/Dropbox/Know/Protokollen ABU/Protokollen/Betrieb b1 b2 hs/B1 und B2/01092023 WKP Kabel nicht Mitversicherung.txt\" 2>&1)",
+      "Bash(/c/Python311/python.exe python_functions/parsers/transcript_parser.py \"/c/Users/User/Dropbox/Know/Protokollen ABU/Protokollen/Betrieb b1 b2 hs/B1 und B2/01072024 B2 Ala en.srt\" 2>&1)",
+      "Bash(/c/Python311/python.exe test_all_files.py)",
+      "Bash(/c/Python311/python.exe python_functions/parsers/metadata_extractor.py \"/c/Users/User/Dropbox/Know/Protokollen ABU/Protokollen/Betrieb b1 b2 hs/ALB und HS/03092024 HS OSS Schaden Gespräch mit Timo.txt\" 2>&1)",
+      "Bash(/c/Python311/python.exe python_functions/parsers/metadata_extractor.py \"/c/Users/User/Dropbox/Know/Protokollen ABU/Protokollen/Betrieb b1 b2 hs/ALB und HS/03092024 HS OSS Schaden Gespräch mit Timo.txt\")",
+      "Bash(/c/Python311/python.exe python_functions/rag/chunker.py 2>&1)",
+      "Bash(/c/Python311/python.exe -c \"\nimport sys\nsys.path.insert\\(0, 'python_functions/rag'\\)\nfrom chunker import chunk_transcript\n\nchunks = chunk_transcript\\(r'C:\\\\Users\\\\User\\\\Dropbox\\\\Know\\\\Protokollen ABU\\\\Protokollen\\\\claims\\\\05072024 Claims JF.txt'\\)\nprint\\(f'Chunks: {len\\(chunks\\)}'\\)\nfor c in chunks[:3]:\n    print\\(f'  Chunk {c.chunk_index}: {len\\(c.text\\)} chars, speakers={c.speakers}, time={c.start_time}->{c.end_time}'\\)\n    print\\(f'    {c.text[:150]}...'\\)\n\" 2>&1)",
+      "Bash(docker:*)",
+      "Bash(/c/Python311/python.exe -m pip install qdrant-client openai python-dotenv)"
     ]
   }
 }
