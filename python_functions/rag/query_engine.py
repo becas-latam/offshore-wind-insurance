@@ -78,11 +78,21 @@ def ask(
     project_phase: str | None = None,
     language: str | None = None,
     model: str = ANSWER_MODEL,
+    conversation_history: list[dict] | None = None,
 ) -> dict:
     """Ask a question and get an expert answer backed by sources."""
+    # Build search query: combine with recent history for context
+    search_query = question
+    if conversation_history:
+        # Use last 2 exchanges to enrich the search query
+        recent = conversation_history[-4:]
+        context_parts = [m["content"] for m in recent if m["role"] == "user"]
+        context_parts.append(question)
+        search_query = " ".join(context_parts[-3:])
+
     # Retrieve
     results = retrieve(
-        question=question,
+        question=search_query,
         top_k=top_k,
         wind_farms=wind_farms,
         insurance_lines=insurance_lines,
@@ -114,12 +124,17 @@ def ask(
 
 Provide a thorough, expert-level answer based on the sources above. Cite specific sources using [Source N] references."""
 
+    # Build messages with conversation history
+    messages = [{"role": "system", "content": EXPERT_SYSTEM_PROMPT}]
+
+    if conversation_history:
+        messages.extend(conversation_history)
+
+    messages.append({"role": "user", "content": user_prompt})
+
     response = openai_client.chat.completions.create(
         model=model,
-        messages=[
-            {"role": "system", "content": EXPERT_SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
+        messages=messages,
         temperature=0.3,
         max_tokens=2000,
     )
