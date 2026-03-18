@@ -1,0 +1,24 @@
+import { MessageSquare } from 'lucide-react'
+
+export function QAPage() {
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+          <MessageSquare className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Expert Q&A</h1>
+          <p className="text-sm text-muted-foreground">Ask questions about offshore wind insurance</p>
+        </div>
+      </div>
+      <div className="mt-12 flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+        <MessageSquare className="h-12 w-12 text-muted-foreground/50" />
+        <h2 className="mt-4 text-lg font-semibold">Coming soon</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The Q&A module will be available once the RAG pipeline is set up.
+        </p>
+      </div>
+    </div>
+  )
+}
