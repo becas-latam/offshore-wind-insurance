@@ -12,7 +12,16 @@
       "Bash(git commit:*)",
       "Bash(gh repo:*)",
       "Bash(find C:/Users/User/apps/german-learning-game/src -maxdepth 2 -type f -name *.config.* -o -name *setup*)",
-      "Bash(find C:/Users/User/apps/german-learning-game -maxdepth 1 -type f \\\\\\(-name *.yaml -o -name *.yml -o -name *.config.* -o -name *rc \\\\\\))"
+      "Bash(find C:/Users/User/apps/german-learning-game -maxdepth 1 -type f \\\\\\(-name *.yaml -o -name *.yml -o -name *.config.* -o -name *rc \\\\\\))",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(npm create:*)",
+      "Bash(cp -r /tmp/offshore-temp/* /tmp/offshore-temp/.gitignore .)",
+      "Bash(rm -rf /tmp/offshore-temp)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(npx:*)"
     ]
   }
 }
