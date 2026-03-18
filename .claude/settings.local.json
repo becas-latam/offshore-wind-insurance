@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /c/Users/User/apps/offshore-wind-insurance status)",
+      "Bash(gh auth:*)",
+      "Bash(winget install:*)",
+      "Bash(where gh:*)",
+      "Read(//c/Program Files/GitHub CLI//**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(export PATH=\"/c/Program Files/GitHub CLI:$PATH\")",
+      "Bash(git init:*)",
+      "Bash(git commit:*)",
+      "Bash(gh repo:*)",
+      "Bash(find C:/Users/User/apps/german-learning-game/src -maxdepth 2 -type f -name *.config.* -o -name *setup*)",
+      "Bash(find C:/Users/User/apps/german-learning-game -maxdepth 1 -type f \\\\\\(-name *.yaml -o -name *.yml -o -name *.config.* -o -name *rc \\\\\\))"
+    ]
+  }
+}
