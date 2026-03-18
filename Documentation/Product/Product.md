@@ -1,7 +1,7 @@
 # Offshore Wind Insurance RAG System — Project Summary
 
 > **Last updated:** March 2026  
-> **Status:** Architecture finalized · Pipeline in active development
+> **Status:** Phase 0 complete · Frontend shell live · Phase 1 (RAG Foundation) next
 
 ---
 
@@ -143,6 +143,19 @@ This enables multi-dimensional Qdrant payload filtering without any manual reorg
 ---
 
 ## 7. Work Remaining
+
+### Phase 0: Project Setup ✅ COMPLETED
+- [x] GitHub repository created
+- [x] React + TypeScript + Vite project initialized
+- [x] Tailwind CSS + shadcn/ui configured (corporate maritime theme)
+- [x] Firebase project connected (Auth, Firestore)
+- [x] Google sign-in enabled (popup on localhost, redirect in production)
+- [x] User profile persistence in Firestore (users collection)
+- [x] Firestore security rules deployed
+- [x] Full routing with protected routes
+- [x] Landing page, login/signup, dashboard, and placeholder pages for all modules
+- [x] Navbar with navigation and user dropdown
+- [x] Python Cloud Functions folder structure prepared
 
 ### Phase 1: RAG Foundation
 - [ ] Design chunking strategy for transcribed `.txt` corpus
