@@ -157,18 +157,39 @@ This enables multi-dimensional Qdrant payload filtering without any manual reorg
 - [x] Navbar with navigation and user dropdown
 - [x] Python Cloud Functions folder structure prepared
 
-### Phase 1: RAG Foundation
-- [ ] Design chunking strategy for transcribed `.txt` corpus
-- [ ] Build evaluation script: Gemini Embedding 2 vs. `text-embedding-3-large` on domain-specific queries
-- [ ] Implement automatic metadata extraction and topic classification per chunk
-- [ ] Tune Qdrant payload schema to the metadata taxonomy
-- [ ] Integrate expert persona system prompt with retrieval pipeline
+### Phase 1: RAG Foundation ✅ COMPLETED
+- [x] Transcript parsers for 4 formats (SRT+speaker IDs, SRT+named, plain named, plain raw)
+- [x] Tested on all 1,162 files — zero errors, 295,803 segments
+- [x] Metadata extraction from file paths (date, wind farm, insurance line, phase, language)
+- [x] Chunking pipeline (time-based 3min windows + segment-based fallback)
+- [x] Qdrant Cloud collection with payload indexes (wind_farms, insurance_lines, project_phase, language, topics, speakers, date)
+- [x] OpenAI text-embedding-3-large embedding pipeline
+- [x] Expert persona system prompt (200+ lines covering all insurance lines, legal frameworks, engineering domain)
+- [x] RAG query engine with source citations
+- [x] 231 chunks indexed from 10 test files — pipeline validated end-to-end
+- [ ] Benchmark Gemini Embedding 2 vs. OpenAI (future)
+- [ ] Full corpus indexing (1,162 files — blocked by Dropbox on-demand sync, run when files available offline)
 
-### Phase 2: Expert Q&A Module
-- [ ] Build Q&A interface with streaming responses
-- [ ] Implement metadata filtering (wind park, insurance line, project phase)
-- [ ] Source citation with drill-down to original transcript passages
-- [ ] Conversation history and saved queries
+### Phase 1.5: Living Glossary & Knowledge Memory
+- [x] Abbreviations document converted from Word to markdown (English + German terms)
+- [x] Book draft and citations converted from Word to markdown
+- [x] Abbreviations injected as reference context in every RAG query
+- [ ] **Auto-enrichment**: After each Q&A, system identifies new terms/definitions found in retrieved conversation chunks that are not yet in the glossary
+- [ ] **Propose additions**: New terms are surfaced to the user for review and approval before adding to the glossary
+- [ ] **Auto-categorize**: New terms are tagged by domain (insurance, legal, engineering, wind farm specific)
+- [ ] **Version history**: Track how the glossary grows over time
+- [ ] **Glossary search**: Dedicated UI page to browse, search, and edit definitions
+- [ ] **Cross-language sync**: When a German term is added, propose the English equivalent and vice versa
+
+### Phase 2: Expert Q&A Module — IN PROGRESS
+- [x] Q&A chat interface with streaming-style display
+- [x] Source citations with file name, wind farm, and date
+- [x] Conversation history (last 6 messages sent for context)
+- [x] Follow-up question support (conversation memory + enriched retrieval)
+- [x] Local Flask API server bridging React frontend to Python RAG backend
+- [ ] Metadata filter sidebar (wind park, insurance line, project phase)
+- [ ] Saved queries and conversation export
+- [ ] Streaming responses (real-time token display)
 
 ### Phase 3: Contract Analysis Module
 - [ ] Document upload pipeline (PDF/Word parsing and clause extraction)
@@ -205,6 +226,7 @@ This enables multi-dimensional Qdrant payload filtering without any manual reorg
 3. **Preview model risk management** — always A/B evaluate before full commitment on unproven models
 4. **Audio-first transcription preserves optionality** — text pipeline is the immediate priority, audio embeddings are a future path
 5. **Domain adaptation** — generic embeddings may underperform; fine-tuning on domain QA pairs is a clear upgrade path
+6. **Living knowledge** — the system gets smarter over time through a growing glossary of terms and definitions extracted from conversations, reviewed by the user, and fed back into future queries
 
 ---
 

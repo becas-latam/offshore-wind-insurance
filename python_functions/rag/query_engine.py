@@ -25,6 +25,12 @@ from expert_persona import EXPERT_SYSTEM_PROMPT
 
 ANSWER_MODEL = "gpt-4o"  # Can be swapped to Claude
 
+# Load abbreviations/definitions as reference context
+DEFINITIONS_PATH = Path(__file__).parent.parent.parent / "Documentation" / "Book" / "abbreviations.md"
+DEFINITIONS_CONTEXT = ""
+if DEFINITIONS_PATH.exists():
+    DEFINITIONS_CONTEXT = DEFINITIONS_PATH.read_text(encoding="utf-8")
+
 
 def retrieve(
     question: str,
@@ -112,17 +118,30 @@ def ask(
     # Generate answer
     openai_client = get_openai_client()
 
+    # Include definitions reference if available
+    definitions_block = ""
+    if DEFINITIONS_CONTEXT:
+        definitions_block = f"""
+
+## Reference: Abbreviations & Definitions
+{DEFINITIONS_CONTEXT}
+
+---
+"""
+
     user_prompt = f"""Based on the following source material from offshore wind insurance expert conversations, answer this question:
 
 **Question:** {question}
 
 ---
+{definitions_block}
+## Source Material
 
 {context}
 
 ---
 
-Provide a thorough, expert-level answer based on the sources above. Cite specific sources using [Source N] references."""
+Provide a thorough, expert-level answer based on the sources above. Use the abbreviations reference to expand acronyms when helpful. Cite specific sources using [Source N] references."""
 
     # Build messages with conversation history
     messages = [{"role": "system", "content": EXPERT_SYSTEM_PROMPT}]
