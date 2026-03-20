@@ -4,20 +4,30 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { MessageSquare, Send, Loader2, FileText, Anchor } from 'lucide-react'
-import { askQuestion, type RAGResponse } from '@/services/ragService'
+import { MessageSquare, Send, Loader2, FileText, Anchor, ChevronDown } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { askQuestion, AVAILABLE_MODELS, type RAGResponse } from '@/services/ragService'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   sources?: RAGResponse['sources']
   chunksRetrieved?: number
+  model?: string
 }
 
 export function QAPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0].id)
+
+  const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) ?? AVAILABLE_MODELS[0]
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -30,14 +40,17 @@ export function QAPage() {
     setMessages(updatedMessages)
     setLoading(true)
 
-    // Build conversation history for the API (last 6 messages max)
     const history = updatedMessages.slice(-6).map(m => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     }))
 
     try {
-      const result = await askQuestion({ question, conversation_history: history })
+      const result = await askQuestion({
+        question,
+        conversation_history: history,
+        model: selectedModel,
+      })
       setMessages(prev => [
         ...prev,
         {
@@ -45,6 +58,7 @@ export function QAPage() {
           content: result.answer,
           sources: result.sources,
           chunksRetrieved: result.chunks_retrieved,
+          model: result.model,
         },
       ])
     } catch (err) {
@@ -63,16 +77,43 @@ export function QAPage() {
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-5xl flex-col px-4 py-6 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-          <MessageSquare className="h-5 w-5 text-primary" />
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <MessageSquare className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Expert Q&A</h1>
+            <p className="text-sm text-muted-foreground">
+              Answers backed by expert conversations
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Expert Q&A</h1>
-          <p className="text-sm text-muted-foreground">
-            Ask questions about offshore wind insurance — answers backed by expert conversations
-          </p>
-        </div>
+
+        {/* Model selector */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
+            <span className="font-medium">{currentModel.label}</span>
+            <span className="hidden text-muted-foreground sm:inline">— {currentModel.description}</span>
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {AVAILABLE_MODELS.map(model => (
+              <DropdownMenuItem
+                key={model.id}
+                onClick={() => setSelectedModel(model.id)}
+              >
+                <div>
+                  <div className="font-medium">{model.label}</div>
+                  <div className="text-xs text-muted-foreground">{model.description}</div>
+                </div>
+                {model.id === selectedModel && (
+                  <Badge variant="secondary" className="ml-2 text-xs">Active</Badge>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Separator />
@@ -106,9 +147,16 @@ export function QAPage() {
                     </div>
                     {msg.sources && msg.sources.length > 0 && (
                       <div className="mt-4 border-t pt-3">
-                        <p className="mb-2 text-xs font-medium text-muted-foreground">
-                          Sources ({msg.chunksRetrieved} chunks retrieved)
-                        </p>
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Sources ({msg.chunksRetrieved} chunks)
+                          </p>
+                          {msg.model && (
+                            <Badge variant="outline" className="text-xs font-normal">
+                              {msg.model}
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex flex-wrap gap-1.5">
                           {msg.sources.map((src, j) => (
                             <Badge key={j} variant="secondary" className="gap-1 text-xs font-normal">

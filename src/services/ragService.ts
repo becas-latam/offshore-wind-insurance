@@ -19,6 +19,11 @@ export interface ConversationMessage {
   content: string
 }
 
+export const AVAILABLE_MODELS = [
+  { id: "gpt-5-mini", label: "GPT-5 Mini", description: "Fast & cost-efficient" },
+  { id: "gpt-5.2", label: "GPT-5.2", description: "Best reasoning" },
+] as const
+
 export interface AskParams {
   question: string
   wind_farms?: string[]
@@ -27,6 +32,7 @@ export interface AskParams {
   language?: string
   top_k?: number
   conversation_history?: ConversationMessage[]
+  model?: string
 }
 
 export async function askQuestion(params: AskParams): Promise<RAGResponse> {

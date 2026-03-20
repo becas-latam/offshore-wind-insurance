@@ -23,7 +23,7 @@ from vector_store import get_client, search
 from embedder import embed_texts, get_openai_client
 from expert_persona import EXPERT_SYSTEM_PROMPT
 
-ANSWER_MODEL = "gpt-4o"  # Can be swapped to Claude
+ANSWER_MODEL = "gpt-5-mini"  # Fast, cost-efficient ($0.25/$2 per 1M tokens)
 
 # Load abbreviations/definitions as reference context
 DEFINITIONS_PATH = Path(__file__).parent.parent.parent / "Documentation" / "Book" / "abbreviations.md"
@@ -154,8 +154,7 @@ Provide a thorough, expert-level answer based on the sources above. Use the abbr
     response = openai_client.chat.completions.create(
         model=model,
         messages=messages,
-        temperature=0.3,
-        max_tokens=2000,
+        max_completion_tokens=2000,
     )
 
     answer = response.choices[0].message.content

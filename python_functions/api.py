@@ -46,9 +46,10 @@ def ask_question():
     language = data.get("language")
     top_k = data.get("top_k", 8)
     conversation_history = data.get("conversation_history")
+    model = data.get("model")  # optional: "gpt-5-mini", "gpt-5.2"
 
     try:
-        result = ask(
+        kwargs = dict(
             question=question,
             top_k=top_k,
             wind_farms=wind_farms,
@@ -57,6 +58,10 @@ def ask_question():
             language=language,
             conversation_history=conversation_history,
         )
+        if model:
+            kwargs["model"] = model
+
+        result = ask(**kwargs)
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
