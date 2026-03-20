@@ -21,13 +21,20 @@ import {
   Trash2,
   PenLine,
   Info,
+  Globe,
+  Save,
+  BookmarkPlus,
+  ExternalLink,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   askQuestion,
+  researchWeb,
+  saveResearchToKB,
   updateTopicContext as updateContextAPI,
   AVAILABLE_MODELS,
   type RAGResponse,
+  type WebSource,
 } from '@/services/ragService'
 import {
   createTopic,
@@ -46,6 +53,11 @@ interface DisplayMessage {
   sources?: RAGResponse['sources']
   chunksRetrieved?: number
   model?: string
+  // Web research
+  type?: 'kb' | 'web'
+  webSources?: WebSource[]
+  searchTime?: number
+  webSaved?: boolean
 }
 
 export function QAPage() {
@@ -60,6 +72,7 @@ export function QAPage() {
   const [newTopicName, setNewTopicName] = useState('')
   const [newTopicContext, setNewTopicContext] = useState('')
   const [showContext, setShowContext] = useState(false)
+  const [researching, setResearching] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel) ?? AVAILABLE_MODELS[0]
@@ -196,6 +209,85 @@ export function QAPage() {
       ])
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleWebResearch(question: string) {
+    if (!user || !activeTopic || researching) return
+
+    setResearching(true)
+
+    try {
+      const result = await researchWeb(
+        question,
+        activeTopic.context || '',
+      )
+
+      const webMsg: DisplayMessage = {
+        role: 'assistant',
+        content: result.report,
+        type: 'web',
+        webSources: result.sources,
+        searchTime: result.search_time,
+        webSaved: false,
+      }
+      setMessages(prev => [...prev, webMsg])
+
+      // Save to Firestore
+      addMessage(user.uid, activeTopic.id, {
+        role: 'assistant',
+        content: `[Web Research]\n${result.report}`,
+      })
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `Web research error: ${err instanceof Error ? err.message : 'Failed'}`,
+          type: 'web',
+        },
+      ])
+    } finally {
+      setResearching(false)
+    }
+  }
+
+  async function handleSaveToKB(msgIndex: number) {
+    const msg = messages[msgIndex]
+    if (!msg || !msg.content) return
+
+    const lastUserMsg = [...messages].slice(0, msgIndex).reverse().find(m => m.role === 'user')
+
+    try {
+      await saveResearchToKB(
+        msg.content,
+        lastUserMsg?.content || '',
+        msg.webSources || [],
+      )
+      setMessages(prev => prev.map((m, i) => i === msgIndex ? { ...m, webSaved: true } : m))
+    } catch {
+      // silent fail
+    }
+  }
+
+  async function handleSaveToTopicContext(msgIndex: number) {
+    if (!user || !activeTopic) return
+    const msg = messages[msgIndex]
+    if (!msg || !msg.content) return
+
+    const lastUserMsg = [...messages].slice(0, msgIndex).reverse().find(m => m.role === 'user')
+
+    try {
+      const updatedContext = await updateContextAPI(
+        lastUserMsg?.content || '',
+        msg.content,
+        activeTopic.context || '',
+      )
+      await updateTopicContext(user.uid, activeTopic.id, updatedContext)
+      setActiveTopic(prev => prev ? { ...prev, context: updatedContext } : null)
+      setMessages(prev => prev.map((m, i) => i === msgIndex ? { ...m, webSaved: true } : m))
+    } catch {
+      // silent fail
     }
   }
 
@@ -381,41 +473,122 @@ export function QAPage() {
                   <div className="rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-primary-foreground">
                     {msg.content}
                   </div>
-                ) : (
-                  <Card className="border-0 shadow-sm">
+                ) : msg.type === 'web' ? (
+                  /* Web Research Card */
+                  <Card className="border-0 shadow-sm border-l-4 border-l-blue-400">
                     <CardContent className="pt-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-blue-500" />
+                        <span className="text-xs font-semibold text-blue-600">Web Research</span>
+                        {msg.searchTime && (
+                          <span className="text-xs text-muted-foreground">{msg.searchTime}s</span>
+                        )}
+                      </div>
                       <div className="prose prose-sm max-w-none text-sm leading-relaxed prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 prose-p:my-1.5 prose-li:my-0.5 prose-strong:text-foreground prose-ul:my-2 prose-ol:my-2">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
-                      {msg.sources && msg.sources.length > 0 && (
+                      {msg.webSources && msg.webSources.length > 0 && (
                         <div className="mt-4 border-t pt-3">
-                          <div className="mb-2 flex items-center justify-between">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              Sources ({msg.chunksRetrieved} chunks)
-                            </p>
-                            {msg.model && (
-                              <Badge variant="outline" className="text-xs font-normal">
-                                {msg.model}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {msg.sources.map((src, j) => (
-                              <Badge key={j} variant="secondary" className="gap-1 text-xs font-normal">
-                                <FileText className="h-3 w-3" />
-                                {src.file}
-                                {src.wind_farms.length > 0 && (
-                                  <span className="text-muted-foreground">
-                                    — {src.wind_farms.join(', ')}
-                                  </span>
-                                )}
-                              </Badge>
+                          <p className="mb-2 text-xs font-medium text-muted-foreground">
+                            Web Sources ({msg.webSources.length})
+                          </p>
+                          <div className="space-y-1">
+                            {msg.webSources.map((src, j) => (
+                              <a
+                                key={j}
+                                href={src.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline"
+                              >
+                                <ExternalLink className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{src.title || src.url}</span>
+                              </a>
                             ))}
                           </div>
                         </div>
                       )}
+                      {!msg.webSaved && (
+                        <div className="mt-3 flex gap-2 border-t pt-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 text-xs"
+                            onClick={() => handleSaveToKB(i)}
+                          >
+                            <Save className="h-3 w-3" /> Save to KB
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 text-xs"
+                            onClick={() => handleSaveToTopicContext(i)}
+                          >
+                            <BookmarkPlus className="h-3 w-3" /> Save to Topic
+                          </Button>
+                        </div>
+                      )}
+                      {msg.webSaved && (
+                        <p className="mt-3 text-xs text-green-600 border-t pt-2">Saved</p>
+                      )}
                     </CardContent>
                   </Card>
+                ) : (
+                  /* KB Answer Card */
+                  <div>
+                    <Card className="border-0 shadow-sm">
+                      <CardContent className="pt-4">
+                        <div className="prose prose-sm max-w-none text-sm leading-relaxed prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 prose-p:my-1.5 prose-li:my-0.5 prose-strong:text-foreground prose-ul:my-2 prose-ol:my-2">
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
+                        {msg.sources && msg.sources.length > 0 && (
+                          <div className="mt-4 border-t pt-3">
+                            <div className="mb-2 flex items-center justify-between">
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Sources ({msg.chunksRetrieved} chunks)
+                              </p>
+                              {msg.model && (
+                                <Badge variant="outline" className="text-xs font-normal">
+                                  {msg.model}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {msg.sources.map((src, j) => (
+                                <Badge key={j} variant="secondary" className="gap-1 text-xs font-normal">
+                                  <FileText className="h-3 w-3" />
+                                  {src.file}
+                                  {src.wind_farms.length > 0 && (
+                                    <span className="text-muted-foreground">
+                                      — {src.wind_farms.join(', ')}
+                                    </span>
+                                  )}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {/* Research Online button — show when answer seems weak */}
+                        {msg.content && !msg.content.startsWith('Error') && (
+                          <div className="mt-3 border-t pt-3">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 gap-1.5 text-xs text-blue-600 hover:text-blue-700"
+                              disabled={researching}
+                              onClick={() => {
+                                const lastQ = [...messages].slice(0, i).reverse().find(m => m.role === 'user')
+                                if (lastQ) handleWebResearch(lastQ.content)
+                              }}
+                            >
+                              <Globe className="h-3.5 w-3.5" />
+                              {researching ? 'Researching...' : 'Research Online'}
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 )}
               </div>
             </div>
@@ -427,6 +600,16 @@ export function QAPage() {
                 <CardContent className="flex items-center gap-2 py-3">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   <span className="text-sm text-muted-foreground">Searching knowledge base...</span>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          {researching && (
+            <div className="flex justify-start">
+              <Card className="border-0 shadow-sm border-l-4 border-l-blue-400">
+                <CardContent className="flex items-center gap-2 py-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  <span className="text-sm text-blue-600">Researching online...</span>
                 </CardContent>
               </Card>
             </div>

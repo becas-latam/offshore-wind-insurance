@@ -74,6 +74,56 @@ export async function updateTopicContext(
   return data.updated_context
 }
 
+export interface WebSource {
+  title: string
+  url: string
+}
+
+export interface WebResearchResponse {
+  report: string
+  sources: WebSource[]
+  search_time: number
+}
+
+export async function researchWeb(
+  question: string,
+  topicContext?: string,
+  language?: string,
+): Promise<WebResearchResponse> {
+  const response = await fetch(`${API_URL}/api/research`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      question,
+      topic_context: topicContext,
+      language,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || "Web research failed")
+  }
+
+  return response.json()
+}
+
+export async function saveResearchToKB(
+  text: string,
+  question: string,
+  sources: WebSource[],
+): Promise<void> {
+  const response = await fetch(`${API_URL}/api/save-research`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, question, sources }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to save research to knowledge base")
+  }
+}
+
 export async function checkHealth(): Promise<{ status: string; collection: { points_count: number } }> {
   const response = await fetch(`${API_URL}/api/health`)
   return response.json()
