@@ -33,6 +33,7 @@ export interface AskParams {
   top_k?: number
   conversation_history?: ConversationMessage[]
   model?: string
+  topic_context?: string
 }
 
 export async function askQuestion(params: AskParams): Promise<RAGResponse> {
@@ -48,6 +49,29 @@ export async function askQuestion(params: AskParams): Promise<RAGResponse> {
   }
 
   return response.json()
+}
+
+export async function updateTopicContext(
+  question: string,
+  answer: string,
+  currentContext: string,
+): Promise<string> {
+  const response = await fetch(`${API_URL}/api/topics/context-update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      question,
+      answer,
+      current_context: currentContext,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to update context")
+  }
+
+  const data = await response.json()
+  return data.updated_context
 }
 
 export async function checkHealth(): Promise<{ status: string; collection: { points_count: number } }> {

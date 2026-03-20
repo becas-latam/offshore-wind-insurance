@@ -85,16 +85,18 @@ def ask(
     language: str | None = None,
     model: str = ANSWER_MODEL,
     conversation_history: list[dict] | None = None,
+    topic_context: str | None = None,
 ) -> dict:
     """Ask a question and get an expert answer backed by sources."""
-    # Build search query: combine with recent history for context
-    search_query = question
+    # Build search query: combine topic context + recent history + question
+    search_parts = []
+    if topic_context:
+        search_parts.append(topic_context[:500])  # Use topic context for better retrieval
     if conversation_history:
-        # Use last 2 exchanges to enrich the search query
         recent = conversation_history[-4:]
-        context_parts = [m["content"] for m in recent if m["role"] == "user"]
-        context_parts.append(question)
-        search_query = " ".join(context_parts[-3:])
+        search_parts.extend(m["content"] for m in recent if m["role"] == "user")
+    search_parts.append(question)
+    search_query = " ".join(search_parts[-4:])
 
     # Retrieve
     results = retrieve(
@@ -129,19 +131,29 @@ def ask(
 ---
 """
 
+    # Include topic context if available
+    topic_block = ""
+    if topic_context:
+        topic_block = f"""
+## Research Topic Context
+{topic_context}
+
+---
+"""
+
     user_prompt = f"""Based on the following source material from offshore wind insurance expert conversations, answer this question:
 
 **Question:** {question}
 
 ---
-{definitions_block}
+{topic_block}{definitions_block}
 ## Source Material
 
 {context}
 
 ---
 
-Provide a thorough, expert-level answer based on the sources above. Use the abbreviations reference to expand acronyms when helpful. Cite specific sources using [Source N] references."""
+Provide a thorough, expert-level answer based on the sources above. Use the topic context to understand what this research thread is about. Use the abbreviations reference to expand acronyms when helpful. Cite specific sources using [Source N] references."""
 
     # Build messages with conversation history
     messages = [{"role": "system", "content": EXPERT_SYSTEM_PROMPT}]
@@ -157,7 +169,19 @@ Provide a thorough, expert-level answer based on the sources above. Use the abbr
         max_completion_tokens=2000,
     )
 
-    answer = response.choices[0].message.content
+    # GPT-5 reasoning models may return content differently
+    choice = response.choices[0]
+    answer = choice.message.content
+
+    # Fallback: check for reasoning content
+    if not answer and hasattr(choice.message, 'reasoning_content'):
+        answer = choice.message.reasoning_content
+    if not answer and hasattr(choice.message, 'refusal'):
+        answer = choice.message.refusal
+    if not answer:
+        # Debug: log the full response structure
+        print(f"WARNING: Empty answer. Response: {response}", flush=True)
+        answer = "The model returned an empty response. Please try rephrasing your question."
 
     # Return answer with source metadata
     sources = [

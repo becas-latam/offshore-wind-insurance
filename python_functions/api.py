@@ -7,10 +7,15 @@ Run: python api.py
 Serves on: http://localhost:5050
 """
 
+import os
 import sys
 from pathlib import Path
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 sys.path.insert(0, str(Path(__file__).parent / "rag"))
 from query_engine import ask
@@ -18,6 +23,8 @@ from vector_store import get_client, get_collection_info
 
 app = Flask(__name__)
 CORS(app)
+
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 @app.route("/api/health", methods=["GET"])
@@ -46,7 +53,8 @@ def ask_question():
     language = data.get("language")
     top_k = data.get("top_k", 8)
     conversation_history = data.get("conversation_history")
-    model = data.get("model")  # optional: "gpt-5-mini", "gpt-5.2"
+    topic_context = data.get("topic_context")
+    model = data.get("model")
 
     try:
         kwargs = dict(
@@ -57,12 +65,52 @@ def ask_question():
             project_phase=project_phase,
             language=language,
             conversation_history=conversation_history,
+            topic_context=topic_context,
         )
         if model:
             kwargs["model"] = model
 
         result = ask(**kwargs)
         return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/topics/context-update", methods=["POST"])
+def update_topic_context():
+    """Extract key facts from a Q&A exchange and return updated context."""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Missing request body"}), 400
+
+    question = data.get("question", "")
+    answer = data.get("answer", "")
+    current_context = data.get("current_context", "")
+
+    try:
+        prompt = f"""You are maintaining a running context summary for a research topic about offshore wind insurance.
+
+Current context:
+{current_context if current_context else "(empty - this is the first exchange)"}
+
+Latest Q&A exchange:
+Q: {question}
+A: {answer[:1500]}
+
+Extract 1-3 key facts from this exchange that are important to remember for future questions in this topic. Append them to the current context. Keep the total context concise (under 2000 characters). If the context is getting long, summarize older facts.
+
+Return ONLY the updated context text, nothing else."""
+
+        response = openai_client.chat.completions.create(
+            model="gpt-5-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_completion_tokens=500,
+        )
+
+        updated_context = response.choices[0].message.content.strip()
+        return jsonify({"updated_context": updated_context})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
