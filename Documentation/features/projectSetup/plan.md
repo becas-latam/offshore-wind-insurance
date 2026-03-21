@@ -2,14 +2,25 @@
 
 ## Overview
 
-A guided onboarding workflow where the user sets up an offshore wind farm project. The setup captures the wind farm identity, project phase (construction or operation), insurance structure, contractor/subcontractor details, and insurance conditions per contractor. This data forms the foundation for all downstream analysis (risk analyzer, contract review, etc.).
+A guided onboarding workflow where the user sets up clients, their offshore wind farm projects, and the detailed insurance/contract structure per wind farm. The hierarchy is:
+
+**Client → Wind Farm(s) → Project Setup (per wind farm)**
+
+A client (e.g., an energy company) can own multiple offshore wind farms. Each wind farm has its own phase, insurance structure, contractors, etc. This data forms the foundation for all downstream analysis (risk analyzer, contract review, etc.).
 
 ---
 
 ## User Flow
 
+### Step 0 — Client
+- User creates or selects an existing **Client**
+- Input: Client name (free text) or anonymous label ("Client 1", "Client 2", etc.)
+- Privacy-first: user is not required to disclose the real name
+- A client can have **multiple wind farms** — user can add wind farms under the same client
+
 ### Step 1 — Wind Farm Identity
 - Input: Wind farm name (free text) or choose anonymous label ("Offshore Wind Farm 1", "Offshore Wind Farm 2", etc.)
+- Wind farm is linked to the selected client
 - Privacy-first: user is not required to disclose the real name
 
 ### Step 2 — Project Phase
@@ -135,11 +146,17 @@ For each contractor, user specifies the agreed insurance conditions:
 
 ### Frontend
 
-- **Route**: `/project-setup` (new project) and `/project/:id` (edit existing)
-- **Page**: `src/pages/ProjectSetupPage.tsx`
+- **Routes**:
+  - `/clients` — Client list (all clients for this user)
+  - `/clients/:clientId` — Client detail showing its wind farms
+  - `/clients/:clientId/windfarms/:windfarmId` — Wind farm project setup wizard
+- **Pages**:
+  - `src/pages/ClientsPage.tsx` — List/create clients
+  - `src/pages/ClientDetailPage.tsx` — View client, list/create wind farms
+  - `src/pages/ProjectSetupPage.tsx` — Wind farm setup wizard
 - **Components**: `src/components/project-setup/`
   - `SetupWizard.tsx` — Main stepper container with phase branching
-  - `StepWindFarm.tsx` — Step 1
+  - `StepWindFarm.tsx` — Step 1 (wind farm name)
   - `StepPhase.tsx` — Step 2
   - **Operation steps:**
     - `StepOperationYear.tsx`
@@ -161,9 +178,15 @@ For each contractor, user specifies the agreed insurance conditions:
 ### Data Storage (Firestore)
 
 ```
-users/{userId}/projects/{projectId}
+users/{userId}/clients/{clientId}
+  ├── name: string                          // Client name or "Client 1"
+  ├── createdAt: timestamp
+  ├── updatedAt: timestamp
+
+users/{userId}/clients/{clientId}/windfarms/{windfarmId}
   ├── name: string                          // Wind farm name or "Offshore Wind Farm 1"
   ├── phase: "construction" | "operation"
+  ├── step: number                          // Current wizard step (for resume)
   ├── createdAt: timestamp
   ├── updatedAt: timestamp
   │
@@ -171,7 +194,8 @@ users/{userId}/projects/{projectId}
   ├── operationStartYear: number | null
   ├── insurancePropertyDamage: boolean | null
   ├── insuranceBI: boolean | null            // Business Interruption
-  ├── deductible: string | null
+  ├── deductiblePD: string | null            // Property Damage deductible (amount)
+  ├── deductibleBI: number | null            // Business Interruption deductible (days)
   ├── warrantyYears: number                  // default 5
   ├── warrantyOverrides: [{ contractor, component, duration, notes }]
   ├── serviceContractType: "full_service" | "break_fix" | null
@@ -179,7 +203,11 @@ users/{userId}/projects/{projectId}
   ├── // Construction fields
   ├── insuranceCAR: boolean | null           // Property Damage (CAR)
   ├── insuranceDSU: boolean | null           // Delay in Start-Up
-  ├── carDeductible: string | null
+  ├── carDeductibles: [{                     // Multiple PD deductibles possible
+  │     label: string                        // e.g., "Standard", "Nat Cat", "Earthquake"
+  │     amount: string
+  │   }]
+  ├── dsuDeductibleDays: number | null       // DSU deductible in days
   ├── contractors: [{
   │     id: string
   │     name: string
@@ -213,8 +241,12 @@ users/{userId}/projects/{projectId}
 
 Add to existing rules:
 ```
-match /projects/{projectId} {
+match /clients/{clientId} {
   allow read, write: if request.auth != null && request.auth.uid == userId;
+
+  match /windfarms/{windfarmId} {
+    allow read, write: if request.auth != null && request.auth.uid == userId;
+  }
 }
 ```
 
@@ -222,13 +254,15 @@ match /projects/{projectId} {
 
 ## Build Order
 
-### Phase 1 — Common Steps + Routing
-1. Create `ProjectSetupPage.tsx` with wizard container
-2. Build Step 1 (Wind Farm name) and Step 2 (Phase selection)
-3. Add route `/project-setup` and `/project/:id`
-4. Add to Dashboard and Navbar
-5. Create Firestore service `src/services/projectStore.ts`
-6. Update Firestore rules
+### Phase 1 — Client & Wind Farm Structure + Routing
+1. Create Firestore services: `src/services/clientStore.ts` and `src/services/windfarmStore.ts`
+2. Build `ClientsPage.tsx` — list clients, create new client
+3. Build `ClientDetailPage.tsx` — view client, list/create wind farms
+4. Build `ProjectSetupPage.tsx` with wizard container
+5. Build Step 0 (Client — handled by ClientsPage), Step 1 (Wind Farm name), Step 2 (Phase selection)
+6. Add routes: `/clients`, `/clients/:clientId`, `/clients/:clientId/windfarms/:windfarmId`
+7. Add to Dashboard and Navbar
+8. Update Firestore rules for clients + windfarms subcollection
 
 ### Phase 2 — Operation Flow
 7. Build operation steps (year, insurance, deductible, warranty, service contract)
