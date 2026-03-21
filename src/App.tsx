@@ -12,6 +12,7 @@ import { ClausesPage } from '@/pages/ClausesPage'
 import { BookPage } from '@/pages/BookPage'
 import { CorpusPage } from '@/pages/CorpusPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { RiskAnalyzerPage } from '@/pages/RiskAnalyzerPage'
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
             <Route path="/contracts" element={<ProtectedRoute><ContractsPage /></ProtectedRoute>} />
             <Route path="/clauses" element={<ProtectedRoute><ClausesPage /></ProtectedRoute>} />
             <Route path="/book" element={<ProtectedRoute><BookPage /></ProtectedRoute>} />
+            <Route path="/risk-analyzer" element={<ProtectedRoute><RiskAnalyzerPage /></ProtectedRoute>} />
             <Route path="/corpus" element={<ProtectedRoute><CorpusPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           </Route>

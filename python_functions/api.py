@@ -183,6 +183,42 @@ def save_research_to_kb():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/risk/stakeholders", methods=["POST"])
+def risk_stakeholders():
+    """Identify potential stakeholders for a contract using AI."""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Missing request body"}), 400
+
+    try:
+        sys.path.insert(0, str(Path(__file__).parent / "risk"))
+        from analyzer import identify_stakeholders
+
+        stakeholders = identify_stakeholders(data)
+        return jsonify({"stakeholders": stakeholders})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/risk/analyze", methods=["POST"])
+def risk_analyze():
+    """Run full risk analysis on contract data + stakeholders."""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Missing request body"}), 400
+
+    try:
+        sys.path.insert(0, str(Path(__file__).parent / "risk"))
+        from analyzer import analyze_risk
+
+        report = analyze_risk(data)
+        return jsonify({"report": report})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     print("Starting RAG API server on http://localhost:5050")
     app.run(host="0.0.0.0", port=5050, debug=True)

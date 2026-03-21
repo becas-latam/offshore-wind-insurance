@@ -16,6 +16,7 @@ import {
   PenTool,
   BookOpen,
   Database,
+  Shield,
   Settings,
   LogOut,
   User,
@@ -24,6 +25,7 @@ import {
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/qa', label: 'Q&A', icon: MessageSquare },
+  { path: '/risk-analyzer', label: 'Risk', icon: Shield },
   { path: '/contracts', label: 'Contracts', icon: FileSearch },
   { path: '/clauses', label: 'Clauses', icon: PenTool },
   { path: '/book', label: 'Book', icon: BookOpen },

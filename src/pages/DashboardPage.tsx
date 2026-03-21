@@ -6,6 +6,7 @@ import {
   FileSearch,
   PenTool,
   BookOpen,
+  Shield,
   ArrowRight,
 } from 'lucide-react'
 
@@ -15,7 +16,14 @@ const modules = [
     description: 'Ask questions and get expert answers from the knowledge base.',
     icon: MessageSquare,
     path: '/qa',
-    status: 'Coming soon',
+    status: 'Live',
+  },
+  {
+    title: 'Risk Analyzer',
+    description: 'Analyze contract liability and identify risk exposure for service contracts.',
+    icon: Shield,
+    path: '/risk-analyzer',
+    status: 'Live',
   },
   {
     title: 'Contract Analysis',
@@ -59,7 +67,10 @@ export function DashboardPage() {
                   <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10">
                     <Icon className="h-5 w-5 text-primary" />
                   </div>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge
+                    variant={status === 'Live' ? 'default' : 'secondary'}
+                    className={`text-xs ${status === 'Live' ? 'bg-green-100 text-green-800 border border-green-200' : ''}`}
+                  >
                     {status}
                   </Badge>
                 </div>
