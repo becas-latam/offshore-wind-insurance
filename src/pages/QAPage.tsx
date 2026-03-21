@@ -158,10 +158,10 @@ export function QAPage() {
     // Save user message to Firestore (don't await — fire and forget)
     addMessage(user.uid, activeTopic.id, { role: 'user', content: question })
 
-    // Build conversation history (only last 4 messages to keep search fast)
-    const history = updatedMessages.slice(-4).map(m => ({
+    // Build conversation history — include web research content so follow-ups work
+    const history = updatedMessages.slice(-6).map(m => ({
       role: m.role as "user" | "assistant",
-      content: m.content,
+      content: m.type === 'web' ? `[Web Research]\n${m.content}` : m.content,
     }))
 
     try {
