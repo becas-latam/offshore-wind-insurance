@@ -167,17 +167,49 @@ User question
       ↓
 4. Load abbreviations/definitions reference document
       ↓
-5. Send to GPT-4o with:
+5. Send to GPT-5 Mini with:
    - Expert persona system prompt
+   - Topic context (auto-growing)
    - Abbreviations reference
    - Retrieved source chunks
-   - Conversation history
+   - Conversation history (includes both KB and web research messages)
       ↓
 6. Return answer with source citations
+      ↓
+7. Auto-update topic context with key facts (background, non-blocking)
+```
+
+### Web Research Flow (when user clicks "Research Online")
+
+```
+User clicks "Research Online" on a KB answer
+      ↓
+1. Call OpenAI Responses API with web_search_preview tool
+   (same OPENAI_API_KEY, no extra service needed)
+      ↓
+2. OpenAI searches the web, reads pages, synthesizes
+      ↓
+3. Return research report with source URLs
+      ↓
+4. Display in distinct blue web research card
+      ↓
+5. User can:
+   - "Save to KB" → embed in Qdrant (source_type: web_research)
+   - "Save to Topic" → add key findings to topic context
+   - Dismiss → not saved
+      ↓
+6. Web research content is included in conversation history
+   so follow-up questions work naturally
 ```
 
 **API Server:** `python_functions/api.py` (Flask, port 5050)
-**Frontend:** React Q&A page at `/qa`
+**Frontend:** React Q&A page at `/qa` with topic sidebar
+
+**API Endpoints:**
+- `POST /api/ask` — KB search + LLM answer
+- `POST /api/research` — web research via OpenAI web search
+- `POST /api/save-research` — save web findings to Qdrant
+- `POST /api/topics/context-update` — auto-grow topic context
 
 ---
 

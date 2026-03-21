@@ -167,8 +167,8 @@ This enables multi-dimensional Qdrant payload filtering without any manual reorg
 - [x] Expert persona system prompt (200+ lines covering all insurance lines, legal frameworks, engineering domain)
 - [x] RAG query engine with source citations
 - [x] 231 chunks indexed from 10 test files — pipeline validated end-to-end
+- [x] Full corpus indexed: 804 files, 10,165 chunks, zero errors (11 minutes)
 - [ ] Benchmark Gemini Embedding 2 vs. OpenAI (future)
-- [ ] Full corpus indexing (1,162 files — blocked by Dropbox on-demand sync, run when files available offline)
 
 ### Phase 1.5: Living Glossary & Knowledge Memory
 - [x] Abbreviations document converted from Word to markdown (English + German terms)
@@ -182,11 +182,22 @@ This enables multi-dimensional Qdrant payload filtering without any manual reorg
 - [ ] **Cross-language sync**: When a German term is added, propose the English equivalent and vice versa
 
 ### Phase 2: Expert Q&A Module — IN PROGRESS
-- [x] Q&A chat interface with streaming-style display
+- [x] Q&A chat interface with markdown rendering (ReactMarkdown)
 - [x] Source citations with file name, wind farm, and date
 - [x] Conversation history (last 6 messages sent for context)
 - [x] Follow-up question support (conversation memory + enriched retrieval)
 - [x] Local Flask API server bridging React frontend to Python RAG backend
+- [x] Topic-based Q&A with Firestore persistence (create, switch, rename, delete topics)
+- [x] Auto-growing topic context (LLM extracts key facts after each answer)
+- [x] Model selector: GPT-5 Mini (default, fast) / GPT-5.2 (best reasoning)
+- [x] Model badge shown on each answer
+- [x] **Web research**: "Research Online" button on every KB answer
+  - Uses OpenAI Responses API with built-in web search (no extra API key)
+  - Distinct blue-bordered card with globe icon for web results
+  - Clickable source URLs
+  - "Save to KB" — embeds research in Qdrant with `source_type: web_research`
+  - "Save to Topic" — adds key findings to topic context
+  - Web research content included in conversation history for follow-ups
 - [ ] Metadata filter sidebar (wind park, insurance line, project phase)
 - [ ] Saved queries and conversation export
 - [ ] Streaming responses (real-time token display)
