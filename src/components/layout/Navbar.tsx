@@ -17,6 +17,7 @@ import {
   BookOpen,
   Database,
   Shield,
+  Building2,
   Settings,
   LogOut,
   User,
@@ -24,6 +25,7 @@ import {
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/clients', label: 'Clients', icon: Building2 },
   { path: '/qa', label: 'Q&A', icon: MessageSquare },
   { path: '/risk-analyzer', label: 'Risk', icon: Shield },
   { path: '/contracts', label: 'Contracts', icon: FileSearch },

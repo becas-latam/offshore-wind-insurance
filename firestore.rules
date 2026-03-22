@@ -15,6 +15,16 @@ service cloud.firestore {
       match /riskAnalyses/{analysisId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+
+      // Clients subcollection
+      match /clients/{clientId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+
+        // Wind farms subcollection
+        match /windfarms/{windfarmId} {
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+        }
+      }
     }
   }
 }

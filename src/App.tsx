@@ -13,6 +13,9 @@ import { BookPage } from '@/pages/BookPage'
 import { CorpusPage } from '@/pages/CorpusPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { RiskAnalyzerPage } from '@/pages/RiskAnalyzerPage'
+import { ClientsPage } from '@/pages/ClientsPage'
+import { ClientDetailPage } from '@/pages/ClientDetailPage'
+import { ProjectSetupPage } from '@/pages/ProjectSetupPage'
 
 function App() {
   return (
@@ -32,6 +35,9 @@ function App() {
             <Route path="/clauses" element={<ProtectedRoute><ClausesPage /></ProtectedRoute>} />
             <Route path="/book" element={<ProtectedRoute><BookPage /></ProtectedRoute>} />
             <Route path="/risk-analyzer" element={<ProtectedRoute><RiskAnalyzerPage /></ProtectedRoute>} />
+            <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
+            <Route path="/clients/:clientId" element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>} />
+            <Route path="/clients/:clientId/windfarms/:windfarmId" element={<ProtectedRoute><ProjectSetupPage /></ProtectedRoute>} />
             <Route path="/corpus" element={<ProtectedRoute><CorpusPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           </Route>

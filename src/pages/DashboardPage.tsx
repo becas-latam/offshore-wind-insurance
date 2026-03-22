@@ -7,10 +7,18 @@ import {
   PenTool,
   BookOpen,
   Shield,
+  Building2,
   ArrowRight,
 } from 'lucide-react'
 
 const modules = [
+  {
+    title: 'Clients & Projects',
+    description: 'Manage clients and set up offshore wind farm projects with full insurance and contractor details.',
+    icon: Building2,
+    path: '/clients',
+    status: 'Live',
+  },
   {
     title: 'Expert Q&A',
     description: 'Ask questions and get expert answers from the knowledge base.',
