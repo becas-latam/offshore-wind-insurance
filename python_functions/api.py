@@ -219,6 +219,24 @@ def risk_analyze():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/risk/construction", methods=["POST"])
+def risk_construction():
+    """Analyze construction-phase risk between Employer and a Contractor."""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Missing request body"}), 400
+
+    try:
+        sys.path.insert(0, str(Path(__file__).parent / "risk"))
+        from analyzer import analyze_construction_risk
+
+        report = analyze_construction_risk(data)
+        return jsonify({"report": report})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     print("Starting RAG API server on http://localhost:5050")
     app.run(host="0.0.0.0", port=5050, debug=True)

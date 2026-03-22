@@ -94,3 +94,47 @@ export async function analyzeRisk(
   const data = await response.json()
   return data.report
 }
+
+export interface ConstructionRiskReport {
+  rating: "High" | "Medium" | "Low"
+  rating_rationale: string
+  insurance_assessment: {
+    car_adequacy: string
+    leg_exposure: string
+    marine_protection: string
+    dsu_assessment: string
+  }
+  key_risks: {
+    risk: string
+    severity: "High" | "Medium" | "Low"
+    detail: string
+    mitigation: string
+  }[]
+  liability_assessment: {
+    regime_analysis: string
+    cap_adequacy: string
+    exclusion_gaps: string
+  }
+  recommendations: Recommendation[]
+  summary: string
+}
+
+export async function analyzeConstructionRisk(
+  windfarm: Record<string, unknown>,
+  contractor: Record<string, unknown>,
+  defaultWarrantyYears: number,
+): Promise<ConstructionRiskReport> {
+  const response = await fetch(`${API_URL}/api/risk/construction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ windfarm, contractor, defaultWarrantyYears }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || "Failed to analyze construction risk")
+  }
+
+  const data = await response.json()
+  return data.report
+}

@@ -14,7 +14,14 @@ import {
   SkipForward,
   CheckCircle,
   AlertCircle,
+  XCircle,
+  AlertTriangle,
+  Shield,
 } from 'lucide-react'
+import {
+  analyzeConstructionRisk,
+  type ConstructionRiskReport,
+} from '@/services/riskAnalyzerService'
 import {
   getWindFarm,
   updateWindFarm,
@@ -44,6 +51,7 @@ const CONSTRUCTION_STEPS = [
   'LEG Clauses',
   'Insurance Conditions',
   'Warranty',
+  'Risk Analysis',
   'Summary',
 ]
 
@@ -182,6 +190,11 @@ export function ProjectSetupPage() {
   const [contractors, setContractors] = useState<Contractor[]>([])
   const [constructionWarrantyYears, setConstructionWarrantyYears] = useState(5)
   const [constructionWarrantyOverrides, setConstructionWarrantyOverrides] = useState<WarrantyOverride[]>([])
+
+  // Construction risk analysis
+  const [contractorReports, setContractorReports] = useState<Record<string, ConstructionRiskReport>>({})
+  const [analyzingContractor, setAnalyzingContractor] = useState<string | null>(null)
+  const [error, setError] = useState('')
 
   const steps = getSteps(phase)
   const totalSteps = steps.length
@@ -873,6 +886,77 @@ export function ProjectSetupPage() {
           </div>
         )
 
+      case 'Risk Analysis':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Analyze the risk between the Employer and each contractor based on the insurance structure, LEG clauses, and liability conditions.
+            </p>
+            {contractors.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No contractors — go back and add contractors first.</p>
+            ) : (
+              contractors.map(c => {
+                const report = contractorReports[c.id]
+                const isAnalyzing = analyzingContractor === c.id
+                return (
+                  <Card key={c.id} size="sm">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-sm">{c.name || 'Unnamed contractor'}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {c.contractType} — {c.scope.join(', ') || 'No scope'}
+                            {c.legClause && ` — ${c.legClause}`}
+                          </CardDescription>
+                        </div>
+                        {report && <RiskBadge rating={report.rating} />}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {isAnalyzing ? (
+                        <div className="flex items-center gap-2 py-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                          <span className="text-sm text-muted-foreground">Analyzing risks...</span>
+                        </div>
+                      ) : report ? (
+                        <ConstructionReportView report={report} />
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={async () => {
+                            setAnalyzingContractor(c.id)
+                            try {
+                              const wfData = {
+                                name,
+                                phase,
+                                insuranceCAR,
+                                insuranceDSU,
+                                carDeductibles,
+                                dsuDeductibleDays: dsuDeductibleDays ? parseInt(dsuDeductibleDays) : null,
+                              }
+                              const result = await analyzeConstructionRisk(wfData, c as unknown as Record<string, unknown>, constructionWarrantyYears)
+                              setContractorReports(prev => ({ ...prev, [c.id]: result }))
+                            } catch (e: any) {
+                              setError(e.message)
+                            } finally {
+                              setAnalyzingContractor(null)
+                            }
+                          }}
+                        >
+                          <Shield className="h-3.5 w-3.5" />
+                          Analyze Risk
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })
+            )}
+          </div>
+        )
+
       case 'Summary':
         return <ProjectSummary phase={phase} data={{
           name, operationStartYear, insurancePD, insuranceBI, deductiblePD, deductibleBIDays,
@@ -935,6 +1019,12 @@ export function ProjectSetupPage() {
         </CardHeader>
         <CardContent>
           {renderStep()}
+
+          {error && (
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {error}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1095,6 +1185,117 @@ function WarrantyPerContractor({
 }
 
 // ─── Summary Component ─────────────────────────────────────────
+function RiskBadge({ rating }: { rating: string }) {
+  const config = {
+    High: { className: 'bg-red-100 text-red-800 border-red-200', icon: XCircle },
+    Medium: { className: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: AlertTriangle },
+    Low: { className: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle },
+  }[rating] ?? { className: 'bg-gray-100 text-gray-800 border-gray-200', icon: Shield }
+  const Icon = config.icon
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${config.className}`}>
+      <Icon className="h-3 w-3" />
+      {rating}
+    </span>
+  )
+}
+
+function SeverityDot({ level }: { level: string }) {
+  const cls = { High: 'bg-red-500', Medium: 'bg-yellow-500', Low: 'bg-green-500' }[level] ?? 'bg-gray-400'
+  return <span className={`inline-block h-2 w-2 rounded-full ${cls}`} />
+}
+
+function ConstructionReportView({ report }: { report: ConstructionRiskReport }) {
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="text-muted-foreground text-xs">{report.rating_rationale}</p>
+
+      {/* Summary */}
+      <div>
+        <h4 className="text-xs font-semibold mb-1">Summary</h4>
+        <p className="text-xs text-muted-foreground whitespace-pre-line">{report.summary}</p>
+      </div>
+
+      {/* Insurance Assessment */}
+      <div>
+        <h4 className="text-xs font-semibold mb-1">Insurance Assessment</h4>
+        <div className="space-y-1">
+          <div className="rounded bg-muted/30 p-2">
+            <span className="text-xs font-medium">CAR Adequacy:</span>
+            <span className="text-xs text-muted-foreground ml-1">{report.insurance_assessment.car_adequacy}</span>
+          </div>
+          <div className="rounded bg-muted/30 p-2">
+            <span className="text-xs font-medium">LEG Exposure:</span>
+            <span className="text-xs text-muted-foreground ml-1">{report.insurance_assessment.leg_exposure}</span>
+          </div>
+          <div className="rounded bg-muted/30 p-2">
+            <span className="text-xs font-medium">Marine Protection:</span>
+            <span className="text-xs text-muted-foreground ml-1">{report.insurance_assessment.marine_protection}</span>
+          </div>
+          {report.insurance_assessment.dsu_assessment && (
+            <div className="rounded bg-muted/30 p-2">
+              <span className="text-xs font-medium">DSU:</span>
+              <span className="text-xs text-muted-foreground ml-1">{report.insurance_assessment.dsu_assessment}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Key Risks */}
+      <div>
+        <h4 className="text-xs font-semibold mb-1">Key Risks</h4>
+        <div className="space-y-1.5">
+          {report.key_risks.map((r, i) => (
+            <div key={i} className="rounded border bg-muted/20 p-2">
+              <div className="flex items-center gap-1.5">
+                <SeverityDot level={r.severity} />
+                <span className="text-xs font-medium">{r.risk}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">{r.detail}</p>
+              <p className="text-xs text-primary mt-0.5">Mitigation: {r.mitigation}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Liability */}
+      <div>
+        <h4 className="text-xs font-semibold mb-1">Liability Assessment</h4>
+        <div className="space-y-1">
+          <div className="rounded bg-muted/30 p-2">
+            <span className="text-xs font-medium">Regime:</span>
+            <span className="text-xs text-muted-foreground ml-1">{report.liability_assessment.regime_analysis}</span>
+          </div>
+          <div className="rounded bg-muted/30 p-2">
+            <span className="text-xs font-medium">Cap Adequacy:</span>
+            <span className="text-xs text-muted-foreground ml-1">{report.liability_assessment.cap_adequacy}</span>
+          </div>
+          <div className="rounded bg-muted/30 p-2">
+            <span className="text-xs font-medium">Exclusion Gaps:</span>
+            <span className="text-xs text-muted-foreground ml-1">{report.liability_assessment.exclusion_gaps}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Recommendations */}
+      <div>
+        <h4 className="text-xs font-semibold mb-1">Recommendations</h4>
+        <div className="space-y-1.5">
+          {report.recommendations.map((r, i) => (
+            <div key={i} className="flex items-start gap-1.5 rounded border bg-muted/20 p-2">
+              <SeverityDot level={r.priority} />
+              <div>
+                <span className="text-xs font-medium">{r.action}</span>
+                <p className="text-xs text-muted-foreground">{r.rationale}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ProjectSummary({ phase, data }: { phase: string | null; data: any }) {
   function Field({ label, value, missing }: { label: string; value?: string | number | null; missing?: boolean }) {
     const isMissing = missing ?? (!value && value !== 0)

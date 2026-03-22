@@ -14,6 +14,9 @@ import {
   ChevronUp,
   Plus,
   Trash2,
+  Import,
+  Wind,
+  Building2,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
@@ -24,6 +27,8 @@ import {
   type SelectedStakeholder,
   type RiskReport,
 } from '@/services/riskAnalyzerService'
+import { getClients, type Client } from '@/services/clientStore'
+import { getWindFarms, type WindFarm, type Contractor } from '@/services/windfarmStore'
 import {
   createAnalysis,
   getAnalyses,
@@ -108,6 +113,15 @@ export function RiskAnalyzerPage() {
   // Collapsible sections in report
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['summary', 'exposure', 'gaps', 'stakeholders', 'recommendations']))
 
+  // Import from project state
+  const [showImport, setShowImport] = useState(false)
+  const [importClients, setImportClients] = useState<Client[]>([])
+  const [importWindfarms, setImportWindfarms] = useState<WindFarm[]>([])
+  const [importContractors, setImportContractors] = useState<Contractor[]>([])
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
+  const [selectedWindfarmId, setSelectedWindfarmId] = useState<string | null>(null)
+  const [loadingImport, setLoadingImport] = useState(false)
+
   // Load saved analyses on mount
   useEffect(() => {
     if (!user) return
@@ -116,6 +130,83 @@ export function RiskAnalyzerPage() {
       setLoadingList(false)
     }).catch(() => setLoadingList(false))
   }, [user])
+
+  async function openImportPicker() {
+    if (!user) return
+    setShowImport(true)
+    setLoadingImport(true)
+    setSelectedClientId(null)
+    setSelectedWindfarmId(null)
+    setImportWindfarms([])
+    setImportContractors([])
+    const clients = await getClients(user.uid)
+    setImportClients(clients)
+    setLoadingImport(false)
+  }
+
+  async function selectImportClient(clientId: string) {
+    if (!user) return
+    setSelectedClientId(clientId)
+    setSelectedWindfarmId(null)
+    setImportContractors([])
+    const wfs = await getWindFarms(user.uid, clientId)
+    setImportWindfarms(wfs)
+  }
+
+  function selectImportWindfarm(wf: WindFarm) {
+    setSelectedWindfarmId(wf.id)
+    setImportContractors(wf.contractors ?? [])
+  }
+
+  async function importContractor(contractor: Contractor, wf: WindFarm, clientName: string) {
+    // Pre-fill the risk analyzer with data from the wind farm + contractor
+    const newPartyA = clientName
+    const newPartyB = contractor.name || 'Contractor'
+    const newRole: 'owner' | 'maintenance' = 'owner'
+    const newScope = `${contractor.contractType} — ${contractor.scope.join(', ')}`
+    const newLiability = contractor.liabilityType || ''
+    const newExclusions = contractor.liabilityExclusions || ''
+
+    // Determine vessel involvement from scope
+    let vessel: 'vessel' | 'charter' | 'none' = 'none'
+    if (contractor.contractType === 'T&I' || contractor.contractType === 'EPCI') {
+      vessel = 'vessel' // T&I and EPCI typically involve vessels
+    }
+
+    setPartyA(newPartyA)
+    setPartyB(newPartyB)
+    setRole(newRole)
+    setScopeOfWork(newScope)
+    setIsServiceContract(wf.phase === 'operation')
+    setVesselInvolvement(vessel)
+    setLiabilityType(newLiability as any)
+    setExclusions(newExclusions)
+    setConsequentialLosses('')
+    setSuggestedStakeholders([])
+    setSelectedStakeholderNames(new Set())
+    setStakeholderLiabilities({})
+    setRiskReport(null)
+    setStep(0)
+    setError('')
+    setShowImport(false)
+
+    // Create a new analysis in Firestore
+    if (!user) return
+    const id = await createAnalysis(user.uid, `${newPartyA} / ${newPartyB}`, {
+      partyA: newPartyA,
+      partyB: newPartyB,
+      role: newRole,
+      scopeOfWork: newScope,
+      isServiceContract: wf.phase === 'operation',
+      vesselInvolvement: vessel,
+      liabilityType: (newLiability || 'negligence') as any,
+      exclusions: newExclusions,
+      consequentialLosses: '',
+    })
+    setActiveAnalysisId(id)
+    const list = await getAnalyses(user.uid)
+    setAnalyses(list)
+  }
 
   function getContractData(): ContractData {
     return {
@@ -709,16 +800,130 @@ export function RiskAnalyzerPage() {
         {/* Main content */}
         <div className="flex-1 max-w-3xl">
           {!activeAnalysisId ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <Shield className="mx-auto h-12 w-12 text-muted-foreground/40 mb-4" />
-                <p className="text-muted-foreground mb-4">Select an existing analysis or create a new one to get started.</p>
-                <Button onClick={handleNewAnalysis} className="gap-1.5">
-                  <Plus className="h-4 w-4" />
-                  New Analysis
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <Shield className="mx-auto h-12 w-12 text-muted-foreground/40 mb-4" />
+                  <p className="text-muted-foreground mb-4">Select an existing analysis or create a new one.</p>
+                  <div className="flex gap-3 justify-center">
+                    <Button onClick={handleNewAnalysis} className="gap-1.5">
+                      <Plus className="h-4 w-4" />
+                      New Analysis
+                    </Button>
+                    <Button onClick={openImportPicker} variant="outline" className="gap-1.5">
+                      <Import className="h-4 w-4" />
+                      Import from Project
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {showImport && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Import from Project</CardTitle>
+                    <CardDescription>Select a client, wind farm, and contractor to pre-fill the analysis.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingImport ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : importClients.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No clients found. Create a client and wind farm first.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Client selection */}
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Client</label>
+                          <div className="flex flex-wrap gap-2">
+                            {importClients.map(c => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => selectImportClient(c.id)}
+                                className={`flex items-center gap-1.5 rounded-lg border-2 px-3 py-2 text-sm transition-all ${
+                                  selectedClientId === c.id
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-border hover:border-primary/30'
+                                }`}
+                              >
+                                <Building2 className="h-3.5 w-3.5" />
+                                {c.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Wind farm selection */}
+                        {selectedClientId && (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Wind Farm</label>
+                            {importWindfarms.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">No wind farms for this client.</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {importWindfarms.map(wf => (
+                                  <button
+                                    key={wf.id}
+                                    type="button"
+                                    onClick={() => selectImportWindfarm(wf)}
+                                    className={`flex items-center gap-1.5 rounded-lg border-2 px-3 py-2 text-sm transition-all ${
+                                      selectedWindfarmId === wf.id
+                                        ? 'border-primary bg-primary/5 text-primary'
+                                        : 'border-border hover:border-primary/30'
+                                    }`}
+                                  >
+                                    <Wind className="h-3.5 w-3.5" />
+                                    {wf.name}
+                                    {wf.phase && <span className="text-xs text-muted-foreground capitalize">({wf.phase})</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Contractor selection */}
+                        {selectedWindfarmId && (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Contractor</label>
+                            {importContractors.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">No contractors in this wind farm. Set up the project first.</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {importContractors.map(c => {
+                                  const wf = importWindfarms.find(w => w.id === selectedWindfarmId)!
+                                  const clientName = importClients.find(cl => cl.id === selectedClientId)?.name || 'Client'
+                                  return (
+                                    <button
+                                      key={c.id}
+                                      type="button"
+                                      onClick={() => importContractor(c, wf, clientName)}
+                                      className="w-full rounded-lg border-2 border-border p-3 text-left text-sm hover:border-primary/30 hover:bg-muted/50 transition-all"
+                                    >
+                                      <div className="font-medium">{c.name || 'Unnamed contractor'}</div>
+                                      <div className="text-xs text-muted-foreground mt-0.5">
+                                        {c.contractType} — {c.scope.join(', ') || 'No scope'}
+                                        {c.liabilityType && ` — ${c.liabilityType === 'knock_for_knock' ? 'K4K' : 'Negligence'}`}
+                                      </div>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex justify-end">
+                          <Button variant="ghost" size="sm" onClick={() => setShowImport(false)}>Cancel</Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           ) : (
             <>
               {/* Progress */}

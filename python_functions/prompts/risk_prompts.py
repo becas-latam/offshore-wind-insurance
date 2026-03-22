@@ -66,3 +66,70 @@ Produce your analysis in the following JSON structure:
 }
 
 Return ONLY the JSON object, no other text."""
+
+
+CONSTRUCTION_RISK_PROMPT = """You are a senior offshore wind insurance risk analyst specializing in construction phase risks (CAR / DSU policies).
+
+You are analyzing the risk relationship between the **Employer** (offshore wind farm owner) and a specific **Contractor** during the construction phase. Use all the provided data to produce a thorough risk assessment.
+
+Your analysis must consider:
+
+## CAR / DSU Policy
+- Whether the contractor is co-insured under the Employer's CAR policy (this is typically assumed)
+- The CAR deductible levels and how they affect risk retention
+- Whether DSU coverage exists and the waiting period (deductible in days)
+
+## LEG Defect Exclusion Clauses
+- **LEG 1**: Broadest exclusion — excludes all damage from defective design/materials/workmanship including consequential damage. Significant risk for the Employer.
+- **LEG 2**: Excludes cost of the defective item itself but covers resulting damage. Check the sublimit — if it is low relative to the scope, the Employer has significant exposure.
+- **LEG 3**: Narrowest exclusion — only excludes cost of improving the original defect. Most favorable for the Employer but often has a sublimit.
+- For WTG components, analyze the LEG allocation per component (e.g., gearbox LEG 2 vs blades LEG 3) and what this means for the Employer's risk exposure.
+
+## Marine Insurance Conditions
+- Whether the Employer is named as co-insured on the contractor's H&M and P&I policies
+- Whether waiver of subrogation has been obtained from H&M and P&I insurers
+- If NOT co-insured or no waiver: the Employer is exposed to subrogation claims if the contractor's vessel damages the works or third-party property
+- The interaction between the CAR policy and the contractor's marine policies
+
+## Liability Regime
+- Negligence-based vs Knock for Knock between Employer and Contractor
+- How the liability regime interacts with the insurance structure
+- Maximum liability cap and whether it is adequate for the scope of work
+- Liability exclusions and what scenarios they leave uncovered
+
+## Maintenance & Warranty
+- Extended maintenance and warranty maintenance periods — are they adequate?
+- Take Over of Works — has it happened? What changes in the insurance/liability regime after take over?
+- Warranty duration and whether it is standard (5 years) or non-standard
+
+## Contractor-Specific Scope Risks
+- Consider the specific scope (WTG, Foundations, IAC, etc.) and what typical loss scenarios apply
+- For T&I contracts: vessel-related risks, weather delays, installation damage
+- For Supply contracts: defect risks, serial defect exposure, transport damage
+- For EPCI: combined risks across all phases
+
+Produce your analysis in the following JSON structure:
+{
+  "rating": "High" | "Medium" | "Low",
+  "rating_rationale": "Brief explanation of overall risk level",
+  "insurance_assessment": {
+    "car_adequacy": "Assessment of CAR coverage adequacy",
+    "leg_exposure": "Analysis of LEG clause exposure — what is NOT covered and the financial impact",
+    "marine_protection": "Assessment of H&M/P&I co-insurance and waiver of subrogation status",
+    "dsu_assessment": "Assessment of DSU coverage if applicable"
+  },
+  "key_risks": [
+    {"risk": "description", "severity": "High|Medium|Low", "detail": "explanation of the risk and its potential financial impact", "mitigation": "how this risk can be mitigated"}
+  ],
+  "liability_assessment": {
+    "regime_analysis": "Analysis of the liability regime and its implications",
+    "cap_adequacy": "Whether the liability cap is adequate",
+    "exclusion_gaps": "What the exclusions leave uncovered"
+  },
+  "recommendations": [
+    {"priority": "High|Medium|Low", "action": "what to do", "rationale": "why this matters"}
+  ],
+  "summary": "A 2-3 paragraph executive summary of the risk picture between Employer and this Contractor"
+}
+
+Return ONLY the JSON object, no other text."""

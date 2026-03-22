@@ -12,7 +12,9 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "prompts"))
-from risk_prompts import STAKEHOLDER_IDENTIFICATION_PROMPT, RISK_ANALYSIS_PROMPT
+sys.path.insert(0, str(Path(__file__).parent.parent / "knowledge"))
+from risk_prompts import STAKEHOLDER_IDENTIFICATION_PROMPT, RISK_ANALYSIS_PROMPT, CONSTRUCTION_RISK_PROMPT
+from loader import load_knowledge
 
 
 def _get_client():
@@ -61,12 +63,17 @@ def identify_stakeholders(contract_data: dict) -> list[dict]:
     client = _get_client()
     summary = _build_contract_summary(contract_data)
 
+    knowledge = load_knowledge("general")
+    system_prompt = STAKEHOLDER_IDENTIFICATION_PROMPT
+    if knowledge:
+        system_prompt += f"\n\n{knowledge}"
+
     print(f"[Risk Analyzer] Identifying stakeholders for: {summary[:100]}...")
 
     response = client.chat.completions.create(
         model="gpt-5-mini",
         messages=[
-            {"role": "system", "content": STAKEHOLDER_IDENTIFICATION_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": summary},
         ],
         max_completion_tokens=4000,
@@ -115,12 +122,17 @@ def analyze_risk(full_data: dict) -> dict:
         for s in stakeholders:
             summary += f"\n- {s['name']}: {s.get('liability', 'No arrangement specified')}"
 
+    knowledge = load_knowledge("general")
+    system_prompt = RISK_ANALYSIS_PROMPT
+    if knowledge:
+        system_prompt += f"\n\n{knowledge}"
+
     print(f"[Risk Analyzer] Running risk analysis...")
 
     response = client.chat.completions.create(
         model="gpt-5-mini",
         messages=[
-            {"role": "system", "content": RISK_ANALYSIS_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": summary},
         ],
         max_completion_tokens=8000,
@@ -132,5 +144,95 @@ def analyze_risk(full_data: dict) -> dict:
     print(f"[Risk Analyzer] finish_reason: {choice.finish_reason}")
     print(f"[Risk Analyzer] refusal: {getattr(choice.message, 'refusal', None)}")
     print(f"[Risk Analyzer] Analysis response ({len(text)} chars): {text[:300]}")
+
+    return _parse_json_response(text)
+
+
+def analyze_construction_risk(data: dict) -> dict:
+    """
+    Analyze construction-phase risk between Employer and a specific Contractor.
+
+    data should contain:
+    - windfarm: wind farm details (name, phase, insurance, deductibles)
+    - contractor: full contractor object
+    - defaultWarrantyYears: default warranty period
+    """
+    client = _get_client()
+
+    wf = data.get("windfarm", {})
+    contractor = data.get("contractor", {})
+    default_warranty = data.get("defaultWarrantyYears", 5)
+
+    # Build WTG components summary
+    wtg_summary = ""
+    if contractor.get("wtgComponents"):
+        wtg_lines = []
+        for comp in contractor["wtgComponents"]:
+            line = f"  - {comp.get('component', 'Unknown')}: {comp.get('legClause', 'N/A')}"
+            if comp.get("sublimit"):
+                line += f" (sublimit: {comp['sublimit']})"
+            wtg_lines.append(line)
+        wtg_summary = "\nWTG Component LEG Breakdown:\n" + "\n".join(wtg_lines)
+
+    # Build deductibles summary
+    deductibles_summary = ""
+    car_deductibles = wf.get("carDeductibles", [])
+    if car_deductibles:
+        ded_lines = [f"  - {d.get('label', 'Standard')}: {d.get('amount', 'N/A')}" for d in car_deductibles]
+        deductibles_summary = "CAR Deductibles:\n" + "\n".join(ded_lines)
+    if wf.get("dsuDeductibleDays"):
+        deductibles_summary += f"\nDSU Deductible: {wf['dsuDeductibleDays']} days"
+
+    summary = f"""CONSTRUCTION PHASE RISK ANALYSIS
+Employer / Wind Farm: {wf.get("name", "N/A")}
+
+CAR Insurance: {"Yes" if wf.get("insuranceCAR") else "No"}
+DSU Insurance: {"Yes" if wf.get("insuranceDSU") else "No"}
+{deductibles_summary}
+
+CONTRACTOR: {contractor.get("name", "N/A")}
+Contract Type: {contractor.get("contractType", "N/A")}
+Scope: {", ".join(contractor.get("scope", []))}
+
+LEG Clause: {contractor.get("legClause", "Not specified")}
+LEG Sublimit: {contractor.get("leg2Sublimit") or "N/A"}
+{wtg_summary}
+
+Extended Maintenance: {"Yes — " + str(contractor.get("extendedMaintenanceDuration", "")) + " months" if contractor.get("extendedMaintenance") else "No"}
+Warranty Maintenance: {"Yes — " + str(contractor.get("warrantyMaintenanceDuration", "")) + " months" if contractor.get("warrantyMaintenance") else "No"}
+Take Over of Works: {contractor.get("takeOverDate") or "Not yet"}
+Default Warranty: {default_warranty} years
+
+Employer Co-insured on Contractor's H&M: {"Yes" if contractor.get("employerCoInsuredHM") else "No" if contractor.get("employerCoInsuredHM") is False else "Unknown"}
+Employer Co-insured on Contractor's P&I: {"Yes" if contractor.get("employerCoInsuredPI") else "No" if contractor.get("employerCoInsuredPI") is False else "Unknown"}
+Waiver of Subrogation (H&M): {"Yes" if contractor.get("waiverSubrogationHM") else "No" if contractor.get("waiverSubrogationHM") is False else "Unknown"}
+Waiver of Subrogation (P&I): {"Yes" if contractor.get("waiverSubrogationPI") else "No" if contractor.get("waiverSubrogationPI") is False else "Unknown"}
+
+Liability Type: {contractor.get("liabilityType", "Not specified")}
+Liability Exclusions: {contractor.get("liabilityExclusions") or "None specified"}
+Maximum Liability: {contractor.get("maximumLiability") or "Not specified"}"""
+
+    knowledge = load_knowledge("construction", "general")
+    system_prompt = CONSTRUCTION_RISK_PROMPT
+    if knowledge:
+        system_prompt += f"\n\n{knowledge}"
+
+    print(f"[Risk Analyzer] Running construction risk analysis for {contractor.get('name', 'Unknown')}...")
+    print(f"[Risk Analyzer] Knowledge loaded: {len(knowledge)} chars")
+
+    response = client.chat.completions.create(
+        model="gpt-5-mini",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": summary},
+        ],
+        max_completion_tokens=8000,
+        response_format={"type": "json_object"},
+    )
+
+    choice = response.choices[0]
+    text = choice.message.content or ""
+    print(f"[Risk Analyzer] finish_reason: {choice.finish_reason}")
+    print(f"[Risk Analyzer] Construction analysis response ({len(text)} chars): {text[:300]}")
 
     return _parse_json_response(text)
