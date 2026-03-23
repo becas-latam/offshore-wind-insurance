@@ -48,9 +48,34 @@ export interface Contractor {
   employerCoInsuredPI: boolean | null
   waiverSubrogationHM: boolean | null
   waiverSubrogationPI: boolean | null
-  liabilityType: 'negligence' | 'knock_for_knock' | null
+  liabilityType: 'negligence' | 'knock_for_knock' | 'hybrid' | null
   liabilityExclusions: string | null
   maximumLiability: string | null
+  // Who bears the CAR deductible
+  deductibleBearer: 'employer' | 'contractor' | 'shared' | null
+  // Manufacturer's warranty
+  manufacturerWarranty: boolean | null
+  manufacturerWarrantyScope: 'replacement_only' | 'replacement_ti' | 'replacement_ti_delay' | null
+  warrantyDuration: number | null  // years from Take Over
+  // Serial defect clause (contractual — separate from serial loss in insurance)
+  serialDefectClause: boolean | null
+  serialDefectTrigger: number | null  // number of same-type failures to trigger
+  serialDefectObligation: 'inspect_all' | 'inspect_replace_all' | 'other' | null
+  // Liability cap carve-outs
+  liabilityCapCarveOuts: string | null  // e.g. "gross negligence, wilful misconduct, IP"
+}
+
+export type FoundationType = 'monopile' | 'jackets' | 'floating' | 'gbs'
+export type ContractSplit = 'EPCI' | 'Supply' | 'T&I'
+
+export interface WorkPackage {
+  id: string
+  type: 'WTG' | 'Foundations' | 'IAC' | 'Offshore Substation' | 'Export Cable'
+  contractSplits: ContractSplit[]  // e.g. ['Supply', 'T&I'] or ['EPCI']
+  // Foundations-specific
+  foundationTypes?: FoundationType[]  // e.g. ['monopile', 'jackets']
+  hasTransitionPiece?: boolean | null     // technology: does the monopile have a TP?
+  transitionPieceSeparateContract?: boolean | null  // contract: is TP under a separate contractor?
 }
 
 export interface WindFarm {
@@ -58,6 +83,7 @@ export interface WindFarm {
   name: string
   phase: 'construction' | 'operation' | null
   step: number
+  workPackages: WorkPackage[]
   createdAt: Timestamp | null
   updatedAt: Timestamp | null
 
@@ -74,9 +100,20 @@ export interface WindFarm {
   // Construction fields
   insuranceCAR: boolean | null
   insuranceDSU: boolean | null
+  carPolicyLimit: string | null
   carDeductibles: CARDeductible[]
   dsuDeductibleDays: number | null
+  dsuIndemnityPeriod: string | null  // e.g. "24 months"
+  dsuBasisOfRecovery: string | null  // e.g. "revenue loss", "increased cost of working"
+  // Serial loss (CAR policy level — insurance mechanism)
+  serialLossClause: boolean | null
+  serialLossAggregation: 'per_root_cause' | 'per_individual_loss' | null
+  decliningScale: boolean | null
+  decliningScaleTiers: string | null  // e.g. "3-3-3" or "5-5-5"
+  decliningScalePercentages: string | null  // e.g. "100-75-50"
+  decliningScaleAppliesToDSU: boolean | null
   contractors: Contractor[]
+  contractorRiskReports: Record<string, unknown>  // contractor id → risk report
   constructionWarrantyYears: number
   constructionWarrantyOverrides: WarrantyOverride[]
 }
@@ -84,6 +121,7 @@ export interface WindFarm {
 const WINDFARM_DEFAULTS: Omit<WindFarm, 'id' | 'name' | 'createdAt' | 'updatedAt'> = {
   phase: null,
   step: 0,
+  workPackages: [],
   operationStartYear: null,
   insurancePropertyDamage: null,
   insuranceBI: null,
@@ -94,9 +132,19 @@ const WINDFARM_DEFAULTS: Omit<WindFarm, 'id' | 'name' | 'createdAt' | 'updatedAt
   serviceContractType: null,
   insuranceCAR: null,
   insuranceDSU: null,
+  carPolicyLimit: null,
   carDeductibles: [],
   dsuDeductibleDays: null,
+  dsuIndemnityPeriod: null,
+  dsuBasisOfRecovery: null,
+  serialLossClause: null,
+  serialLossAggregation: null,
+  decliningScale: null,
+  decliningScaleTiers: null,
+  decliningScalePercentages: null,
+  decliningScaleAppliesToDSU: null,
   contractors: [],
+  contractorRiskReports: {},
   constructionWarrantyYears: 5,
   constructionWarrantyOverrides: [],
 }

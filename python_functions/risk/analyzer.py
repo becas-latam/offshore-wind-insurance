@@ -71,7 +71,7 @@ def identify_stakeholders(contract_data: dict) -> list[dict]:
     print(f"[Risk Analyzer] Identifying stakeholders for: {summary[:100]}...")
 
     response = client.chat.completions.create(
-        model="gpt-5-mini",
+        model="gpt-5.4",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": summary},
@@ -130,7 +130,7 @@ def analyze_risk(full_data: dict) -> dict:
     print(f"[Risk Analyzer] Running risk analysis...")
 
     response = client.chat.completions.create(
-        model="gpt-5-mini",
+        model="gpt-5.4",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": summary},
@@ -194,9 +194,10 @@ CONTRACTOR: {contractor.get("name", "N/A")}
 Contract Type: {contractor.get("contractType", "N/A")}
 Scope: {", ".join(contractor.get("scope", []))}
 
-LEG Clause: {contractor.get("legClause", "Not specified")}
-LEG Sublimit: {contractor.get("leg2Sublimit") or "N/A"}
+LEG Clause (overall): {contractor.get("legClause") or "See per-component breakdown below" if contractor.get("wtgComponents") else contractor.get("legClause", "Not specified")}
+LEG Sublimit (overall): {contractor.get("leg2Sublimit") or "N/A"}
 {wtg_summary}
+{"NOTE: For this WTG contractor, the per-component LEG breakdown above is the authoritative source. Ignore the overall LEG clause field if it conflicts with the component-level data." if contractor.get("wtgComponents") else ""}
 
 Extended Maintenance: {"Yes — " + str(contractor.get("extendedMaintenanceDuration", "")) + " months" if contractor.get("extendedMaintenance") else "No"}
 Warranty Maintenance: {"Yes — " + str(contractor.get("warrantyMaintenanceDuration", "")) + " months" if contractor.get("warrantyMaintenance") else "No"}
@@ -208,9 +209,23 @@ Employer Co-insured on Contractor's P&I: {"Yes" if contractor.get("employerCoIns
 Waiver of Subrogation (H&M): {"Yes" if contractor.get("waiverSubrogationHM") else "No" if contractor.get("waiverSubrogationHM") is False else "Unknown"}
 Waiver of Subrogation (P&I): {"Yes" if contractor.get("waiverSubrogationPI") else "No" if contractor.get("waiverSubrogationPI") is False else "Unknown"}
 
+Who Bears the CAR Deductible: {contractor.get("deductibleBearer", "Not specified")}
+
 Liability Type: {contractor.get("liabilityType", "Not specified")}
 Liability Exclusions: {contractor.get("liabilityExclusions") or "None specified"}
-Maximum Liability: {contractor.get("maximumLiability") or "Not specified"}"""
+Maximum Liability: {contractor.get("maximumLiability") or "Not specified"}
+Liability Cap Carve-outs: {contractor.get("liabilityCapCarveOuts") or "None specified"}
+
+Serial Defect Clause (contractual): {"Yes — trigger: " + str(contractor.get("serialDefectTrigger", "N/A")) + " failures, obligation: " + str(contractor.get("serialDefectObligation", "N/A")) if contractor.get("serialDefectClause") else "No" if contractor.get("serialDefectClause") is False else "Unknown"}
+
+CAR POLICY DETAILS:
+CAR Policy Limit: {wf.get("carPolicyLimit") or "Not specified"}
+DSU Indemnity Period: {wf.get("dsuIndemnityPeriod") or "Not specified"}
+DSU Basis of Recovery: {wf.get("dsuBasisOfRecovery") or "Not specified"}
+Serial Loss Clause (insurance): {"Yes" if wf.get("serialLossClause") else "No" if wf.get("serialLossClause") is False else "Not specified"}
+Serial Loss Aggregation: {wf.get("serialLossAggregation", "Not specified")}
+Declining Coverage Scale: {"Yes — tiers: " + str(wf.get("decliningScaleTiers", "N/A")) + ", percentages: " + str(wf.get("decliningScalePercentages", "N/A")) if wf.get("decliningScale") else "No" if wf.get("decliningScale") is False else "Not specified"}
+Declining Scale Applies to DSU: {"Yes" if wf.get("decliningScaleAppliesToDSU") else "No" if wf.get("decliningScaleAppliesToDSU") is False else "Not specified"}"""
 
     knowledge = load_knowledge("construction", "general")
     system_prompt = CONSTRUCTION_RISK_PROMPT
@@ -221,7 +236,7 @@ Maximum Liability: {contractor.get("maximumLiability") or "Not specified"}"""
     print(f"[Risk Analyzer] Knowledge loaded: {len(knowledge)} chars")
 
     response = client.chat.completions.create(
-        model="gpt-5-mini",
+        model="gpt-5.4",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": summary},

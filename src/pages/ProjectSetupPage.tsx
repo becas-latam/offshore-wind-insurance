@@ -28,6 +28,9 @@ import {
   type Contractor,
   type CARDeductible,
   type WarrantyOverride,
+  type WorkPackage,
+  type FoundationType,
+  type ContractSplit,
 } from '@/services/windfarmStore'
 
 // ─── Step definitions ──────────────────────────────────────────
@@ -45,6 +48,7 @@ const OPERATION_STEPS = [
 
 const CONSTRUCTION_STEPS = [
   ...COMMON_STEPS,
+  'Work Packages',
   'Insurance Coverage',
   'Deductibles',
   'Contractors',
@@ -127,6 +131,14 @@ function newContractor(): Contractor {
     liabilityType: null,
     liabilityExclusions: null,
     maximumLiability: null,
+    deductibleBearer: null,
+    manufacturerWarranty: null,
+    manufacturerWarrantyScope: null,
+    warrantyDuration: null,
+    serialDefectClause: null,
+    serialDefectTrigger: null,
+    serialDefectObligation: null,
+    liabilityCapCarveOuts: null,
   }
 }
 
@@ -182,11 +194,23 @@ export function ProjectSetupPage() {
   const [warrantyOverrides, setWarrantyOverrides] = useState<WarrantyOverride[]>([])
   const [serviceContractType, setServiceContractType] = useState<'full_service' | 'break_fix' | null>(null)
 
+  // ─── Work Packages ─────────────
+  const [workPackages, setWorkPackages] = useState<WorkPackage[]>([])
+
   // ─── Construction fields ───────
   const [insuranceCAR, setInsuranceCAR] = useState<boolean | null>(null)
   const [insuranceDSU, setInsuranceDSU] = useState<boolean | null>(null)
   const [carDeductibles, setCarDeductibles] = useState<CARDeductible[]>([{ label: 'Standard', amount: '' }])
+  const [carPolicyLimit, setCarPolicyLimit] = useState('')
   const [dsuDeductibleDays, setDsuDeductibleDays] = useState('')
+  const [dsuIndemnityPeriod, setDsuIndemnityPeriod] = useState('')
+  const [dsuBasisOfRecovery, setDsuBasisOfRecovery] = useState('')
+  const [serialLossClause, setSerialLossClause] = useState<boolean | null>(null)
+  const [serialLossAggregation, setSerialLossAggregation] = useState<'per_root_cause' | 'per_individual_loss' | null>(null)
+  const [decliningScale, setDecliningScale] = useState<boolean | null>(null)
+  const [decliningScaleTiers, setDecliningScaleTiers] = useState('')
+  const [decliningScalePercentages, setDecliningScalePercentages] = useState('')
+  const [decliningScaleAppliesToDSU, setDecliningScaleAppliesToDSU] = useState<boolean | null>(null)
   const [contractors, setContractors] = useState<Contractor[]>([])
   const [constructionWarrantyYears, setConstructionWarrantyYears] = useState(5)
   const [constructionWarrantyOverrides, setConstructionWarrantyOverrides] = useState<WarrantyOverride[]>([])
@@ -207,6 +231,7 @@ export function ProjectSetupPage() {
         setName(data.name)
         setPhase(data.phase)
         setStep(data.step ?? 0)
+        setWorkPackages(data.workPackages ?? [])
         // Operation
         setOperationStartYear(data.operationStartYear?.toString() ?? '')
         setInsurancePD(data.insurancePropertyDamage)
@@ -219,9 +244,19 @@ export function ProjectSetupPage() {
         // Construction
         setInsuranceCAR(data.insuranceCAR)
         setInsuranceDSU(data.insuranceDSU)
+        setCarPolicyLimit(data.carPolicyLimit ?? '')
         setCarDeductibles(data.carDeductibles?.length ? data.carDeductibles : [{ label: 'Standard', amount: '' }])
         setDsuDeductibleDays(data.dsuDeductibleDays?.toString() ?? '')
+        setDsuIndemnityPeriod(data.dsuIndemnityPeriod ?? '')
+        setDsuBasisOfRecovery(data.dsuBasisOfRecovery ?? '')
+        setSerialLossClause(data.serialLossClause)
+        setSerialLossAggregation(data.serialLossAggregation)
+        setDecliningScale(data.decliningScale)
+        setDecliningScaleTiers(data.decliningScaleTiers ?? '')
+        setDecliningScalePercentages(data.decliningScalePercentages ?? '')
+        setDecliningScaleAppliesToDSU(data.decliningScaleAppliesToDSU)
         setContractors(data.contractors ?? [])
+        setContractorReports((data.contractorRiskReports ?? {}) as Record<string, ConstructionRiskReport>)
         setConstructionWarrantyYears(data.constructionWarrantyYears ?? 5)
         setConstructionWarrantyOverrides(data.constructionWarrantyOverrides ?? [])
       }
@@ -232,16 +267,20 @@ export function ProjectSetupPage() {
   // ─── Save ──────────────────────
   // Use a ref to always have the latest state for save-on-unmount
   const stateRef = useRef({
-    name, phase, step, operationStartYear, insurancePD, insuranceBI,
+    name, phase, step, workPackages, operationStartYear, insurancePD, insuranceBI,
     deductiblePD, deductibleBIDays, warrantyYears, warrantyOverrides,
-    serviceContractType, insuranceCAR, insuranceDSU, carDeductibles,
-    dsuDeductibleDays, contractors, constructionWarrantyYears, constructionWarrantyOverrides,
+    serviceContractType, insuranceCAR, insuranceDSU, carPolicyLimit, carDeductibles,
+    dsuDeductibleDays, dsuIndemnityPeriod, dsuBasisOfRecovery,
+    serialLossClause, serialLossAggregation, decliningScale, decliningScaleTiers, decliningScalePercentages, decliningScaleAppliesToDSU,
+    contractors, contractorReports, constructionWarrantyYears, constructionWarrantyOverrides,
   })
   stateRef.current = {
-    name, phase, step, operationStartYear, insurancePD, insuranceBI,
+    name, phase, step, workPackages, operationStartYear, insurancePD, insuranceBI,
     deductiblePD, deductibleBIDays, warrantyYears, warrantyOverrides,
-    serviceContractType, insuranceCAR, insuranceDSU, carDeductibles,
-    dsuDeductibleDays, contractors, constructionWarrantyYears, constructionWarrantyOverrides,
+    serviceContractType, insuranceCAR, insuranceDSU, carPolicyLimit, carDeductibles,
+    dsuDeductibleDays, dsuIndemnityPeriod, dsuBasisOfRecovery,
+    serialLossClause, serialLossAggregation, decliningScale, decliningScaleTiers, decliningScalePercentages, decliningScaleAppliesToDSU,
+    contractors, contractorReports, constructionWarrantyYears, constructionWarrantyOverrides,
   }
 
   async function saveState(overrides?: Partial<typeof stateRef.current>) {
@@ -251,6 +290,7 @@ export function ProjectSetupPage() {
       name: s.name,
       phase: s.phase,
       step: s.step,
+      workPackages: s.workPackages,
       operationStartYear: s.operationStartYear ? parseInt(s.operationStartYear) : null,
       insurancePropertyDamage: s.insurancePD,
       insuranceBI: s.insuranceBI,
@@ -261,9 +301,19 @@ export function ProjectSetupPage() {
       serviceContractType: s.serviceContractType,
       insuranceCAR: s.insuranceCAR,
       insuranceDSU: s.insuranceDSU,
+      carPolicyLimit: s.carPolicyLimit || null,
       carDeductibles: s.carDeductibles,
       dsuDeductibleDays: s.dsuDeductibleDays ? parseInt(s.dsuDeductibleDays) : null,
+      dsuIndemnityPeriod: s.dsuIndemnityPeriod || null,
+      dsuBasisOfRecovery: s.dsuBasisOfRecovery || null,
+      serialLossClause: s.serialLossClause,
+      serialLossAggregation: s.serialLossAggregation,
+      decliningScale: s.decliningScale,
+      decliningScaleTiers: s.decliningScaleTiers || null,
+      decliningScalePercentages: s.decliningScalePercentages || null,
+      decliningScaleAppliesToDSU: s.decliningScaleAppliesToDSU,
       contractors: s.contractors,
+      contractorRiskReports: s.contractorReports,
       constructionWarrantyYears: s.constructionWarrantyYears,
       constructionWarrantyOverrides: s.constructionWarrantyOverrides,
     })
@@ -364,13 +414,17 @@ export function ProjectSetupPage() {
           </div>
         )
 
+      // ─── WORK PACKAGES ─────────────
+      case 'Work Packages':
+        return <WorkPackageStep workPackages={workPackages} onChange={setWorkPackages} />
+
       // ─── OPERATION ───────────────
       case 'Year of Operations':
         return (
           <div>
             <label className="mb-1.5 block text-sm font-medium">Year Start of Operations</label>
             <Input
-              type="number"
+              inputMode="numeric"
               placeholder="e.g. 2023"
               value={operationStartYear}
               onChange={e => setOperationStartYear(e.target.value)}
@@ -429,7 +483,7 @@ export function ProjectSetupPage() {
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">Business Interruption Deductible (days)</label>
                   <Input
-                    type="number"
+                    inputMode="numeric"
                     placeholder="e.g. 60"
                     value={deductibleBIDays}
                     onChange={e => setDeductibleBIDays(e.target.value)}
@@ -445,6 +499,17 @@ export function ProjectSetupPage() {
         // Construction deductibles
         return (
           <div className="space-y-6">
+            {insuranceCAR && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">CAR Policy Limit</label>
+                <Input
+                  placeholder="e.g. 500000000"
+                  value={carPolicyLimit}
+                  onChange={e => setCarPolicyLimit(e.target.value)}
+                />
+                <AmountInWords value={carPolicyLimit} />
+              </div>
+            )}
             {insuranceCAR && (
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -499,14 +564,87 @@ export function ProjectSetupPage() {
               </div>
             )}
             {insuranceDSU && (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium">DSU Deductible (days)</label>
-                <Input
-                  type="number"
-                  placeholder="e.g. 60"
-                  value={dsuDeductibleDays}
-                  onChange={e => setDsuDeductibleDays(e.target.value)}
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">DSU Waiting Period (days)</label>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="e.g. 60"
+                    value={dsuDeductibleDays}
+                    onChange={e => setDsuDeductibleDays(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">DSU Indemnity Period</label>
+                  <Input
+                    placeholder="e.g. 24 months"
+                    value={dsuIndemnityPeriod}
+                    onChange={e => setDsuIndemnityPeriod(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">DSU Basis of Recovery</label>
+                  <Input
+                    placeholder="e.g. revenue loss, increased cost of working"
+                    value={dsuBasisOfRecovery}
+                    onChange={e => setDsuBasisOfRecovery(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+            {/* Serial Loss Clause (CAR policy level) */}
+            {insuranceCAR && (
+              <div className="space-y-3 border-t pt-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Serial Loss Clause in CAR</label>
+                  <YesNoButtons value={serialLossClause} onChange={setSerialLossClause} />
+                </div>
+                {serialLossClause && (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Aggregation Basis</label>
+                      <div className="flex gap-2">
+                        <OptionButton selected={serialLossAggregation === 'per_root_cause'} onClick={() => setSerialLossAggregation('per_root_cause')}>
+                          <div className="font-semibold">Per root cause</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">One deductible for entire series</div>
+                        </OptionButton>
+                        <OptionButton selected={serialLossAggregation === 'per_individual_loss'} onClick={() => setSerialLossAggregation('per_individual_loss')}>
+                          <div className="font-semibold">Per individual loss</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">Each unit triggers its own deductible</div>
+                        </OptionButton>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Declining Coverage Scale</label>
+                      <YesNoButtons value={decliningScale} onChange={setDecliningScale} />
+                    </div>
+                    {decliningScale && (
+                      <div className="space-y-2 rounded-lg bg-muted/30 p-3">
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Tier structure per component type</label>
+                          <Input
+                            placeholder="e.g. 3-3-3 or 5-5-5 (losses per tier)"
+                            value={decliningScaleTiers}
+                            onChange={e => setDecliningScaleTiers(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Coverage percentages per tier</label>
+                          <Input
+                            placeholder="e.g. 100-75-50"
+                            value={decliningScalePercentages}
+                            onChange={e => setDecliningScalePercentages(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Declining scale applies to DSU?</label>
+                          <YesNoButtons value={decliningScaleAppliesToDSU} onChange={setDecliningScaleAppliesToDSU} />
+                          <p className="text-xs text-muted-foreground mt-1">Typically no — DSU is not affected by the declining scale</p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
             {!insuranceCAR && !insuranceDSU && (
@@ -522,7 +660,7 @@ export function ProjectSetupPage() {
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Default Warranty Period (years)</label>
                 <Input
-                  type="number"
+                  inputMode="numeric"
                   value={warrantyYears}
                   onChange={e => setWarrantyYears(parseInt(e.target.value) || 5)}
                 />
@@ -543,7 +681,7 @@ export function ProjectSetupPage() {
             <div>
               <label className="mb-1.5 block text-sm font-medium">Default Warranty Period (years)</label>
               <Input
-                type="number"
+                inputMode="numeric"
                 value={constructionWarrantyYears}
                 onChange={e => setConstructionWarrantyYears(parseInt(e.target.value) || 5)}
               />
@@ -647,7 +785,7 @@ export function ProjectSetupPage() {
                             <YesNoButtons value={c.extendedMaintenance} onChange={v => updateContractor(c.id, { extendedMaintenance: v })} />
                             {c.extendedMaintenance && (
                               <Input
-                                type="number"
+                                inputMode="numeric"
                                 placeholder="months"
                                 className="w-24"
                                 value={c.extendedMaintenanceDuration ?? ''}
@@ -662,7 +800,7 @@ export function ProjectSetupPage() {
                             <YesNoButtons value={c.warrantyMaintenance} onChange={v => updateContractor(c.id, { warrantyMaintenance: v })} />
                             {c.warrantyMaintenance && (
                               <Input
-                                type="number"
+                                inputMode="numeric"
                                 placeholder="months"
                                 className="w-24"
                                 value={c.warrantyMaintenanceDuration ?? ''}
@@ -843,21 +981,25 @@ export function ProjectSetupPage() {
                         <YesNoButtons value={c.waiverSubrogationPI} onChange={v => updateContractor(c.id, { waiverSubrogationPI: v })} />
                       </div>
                     </div>
+                    {/* Who bears the deductible */}
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Who Bears the CAR Deductible?</label>
+                      <div className="flex gap-2">
+                        {(['employer', 'contractor', 'shared'] as const).map(opt => (
+                          <OptionButton key={opt} selected={c.deductibleBearer === opt} onClick={() => updateContractor(c.id, { deductibleBearer: opt })}>
+                            {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                          </OptionButton>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Liability */}
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Liability Type</label>
                       <div className="flex gap-2">
-                        <OptionButton
-                          selected={c.liabilityType === 'negligence'}
-                          onClick={() => updateContractor(c.id, { liabilityType: 'negligence' })}
-                        >
-                          Negligence
-                        </OptionButton>
-                        <OptionButton
-                          selected={c.liabilityType === 'knock_for_knock'}
-                          onClick={() => updateContractor(c.id, { liabilityType: 'knock_for_knock' })}
-                        >
-                          Knock for Knock
-                        </OptionButton>
+                        <OptionButton selected={c.liabilityType === 'negligence'} onClick={() => updateContractor(c.id, { liabilityType: 'negligence' })}>Negligence</OptionButton>
+                        <OptionButton selected={c.liabilityType === 'knock_for_knock'} onClick={() => updateContractor(c.id, { liabilityType: 'knock_for_knock' })}>Knock for Knock</OptionButton>
+                        <OptionButton selected={c.liabilityType === 'hybrid'} onClick={() => updateContractor(c.id, { liabilityType: 'hybrid' })}>Hybrid</OptionButton>
                       </div>
                     </div>
                     <div>
@@ -870,14 +1012,48 @@ export function ProjectSetupPage() {
                         onChange={e => updateContractor(c.id, { liabilityExclusions: e.target.value || null })}
                       />
                     </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Maximum Liability</label>
+                        <Input placeholder="e.g. 50000000 or 100% of contract value" value={c.maximumLiability ?? ''} onChange={e => updateContractor(c.id, { maximumLiability: e.target.value || null })} />
+                        <AmountInWords value={c.maximumLiability ?? ''} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Cap Carve-outs</label>
+                        <Input placeholder="e.g. gross negligence, wilful misconduct, IP" value={c.liabilityCapCarveOuts ?? ''} onChange={e => updateContractor(c.id, { liabilityCapCarveOuts: e.target.value || null })} />
+                      </div>
+                    </div>
+
+                    {/* Serial Defect Clause (contractual) */}
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Maximum Liability</label>
-                      <Input
-                        placeholder="e.g. 50000000 or 100% of contract value"
-                        value={c.maximumLiability ?? ''}
-                        onChange={e => updateContractor(c.id, { maximumLiability: e.target.value || null })}
-                      />
-                      <AmountInWords value={c.maximumLiability ?? ''} />
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Serial Defect Clause (contractual)</label>
+                      <YesNoButtons value={c.serialDefectClause} onChange={v => updateContractor(c.id, { serialDefectClause: v })} />
+                      {c.serialDefectClause && (
+                        <div className="grid gap-2 sm:grid-cols-2 mt-2">
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">Trigger (number of same-type failures)</label>
+                            <Input
+                              inputMode="numeric"
+                              placeholder="e.g. 3"
+                              value={c.serialDefectTrigger ?? ''}
+                              onChange={e => updateContractor(c.id, { serialDefectTrigger: parseInt(e.target.value) || null })}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">Obligation when triggered</label>
+                            <select
+                              value={c.serialDefectObligation ?? ''}
+                              onChange={e => updateContractor(c.id, { serialDefectObligation: (e.target.value || null) as Contractor['serialDefectObligation'] })}
+                              className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
+                            >
+                              <option value="">Select...</option>
+                              <option value="inspect_all">Inspect all units</option>
+                              <option value="inspect_replace_all">Inspect + replace all</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -886,7 +1062,39 @@ export function ProjectSetupPage() {
           </div>
         )
 
-      case 'Risk Analysis':
+      case 'Risk Analysis': {
+        async function runAnalysis(contractorId: string) {
+          const c = contractors.find(x => x.id === contractorId)
+          if (!c) return
+          setAnalyzingContractor(contractorId)
+          setError('')
+          try {
+            const wfData = {
+              name, phase, insuranceCAR, insuranceDSU, carPolicyLimit,
+              carDeductibles, dsuDeductibleDays: dsuDeductibleDays ? parseInt(dsuDeductibleDays) : null,
+              dsuIndemnityPeriod, dsuBasisOfRecovery,
+              serialLossClause, serialLossAggregation, decliningScale,
+              decliningScaleTiers, decliningScalePercentages, decliningScaleAppliesToDSU,
+            }
+            const result = await analyzeConstructionRisk(wfData, c as unknown as Record<string, unknown>, constructionWarrantyYears)
+            const updated = { ...contractorReports, [contractorId]: result }
+            setContractorReports(updated)
+            // Save to Firestore immediately
+            await saveState({ contractorReports: updated } as any)
+          } catch (e: any) {
+            setError(e.message)
+          } finally {
+            setAnalyzingContractor(null)
+          }
+        }
+
+        async function deleteReport(contractorId: string) {
+          const updated = { ...contractorReports }
+          delete updated[contractorId]
+          setContractorReports(updated)
+          await saveState({ contractorReports: updated } as any)
+        }
+
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -909,7 +1117,30 @@ export function ProjectSetupPage() {
                             {c.legClause && ` — ${c.legClause}`}
                           </CardDescription>
                         </div>
-                        {report && <RiskBadge rating={report.rating} />}
+                        <div className="flex items-center gap-2">
+                          {report && <RiskBadge rating={report.rating} />}
+                          {report && !isAnalyzing && (
+                            <div className="flex gap-1">
+                              <Button
+                                size="icon-xs"
+                                variant="ghost"
+                                title="Re-run analysis"
+                                onClick={() => runAnalysis(c.id)}
+                              >
+                                <Shield className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="icon-xs"
+                                variant="ghost"
+                                className="text-muted-foreground hover:text-destructive"
+                                title="Delete analysis"
+                                onClick={() => deleteReport(c.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -925,25 +1156,7 @@ export function ProjectSetupPage() {
                           size="sm"
                           variant="outline"
                           className="gap-1.5"
-                          onClick={async () => {
-                            setAnalyzingContractor(c.id)
-                            try {
-                              const wfData = {
-                                name,
-                                phase,
-                                insuranceCAR,
-                                insuranceDSU,
-                                carDeductibles,
-                                dsuDeductibleDays: dsuDeductibleDays ? parseInt(dsuDeductibleDays) : null,
-                              }
-                              const result = await analyzeConstructionRisk(wfData, c as unknown as Record<string, unknown>, constructionWarrantyYears)
-                              setContractorReports(prev => ({ ...prev, [c.id]: result }))
-                            } catch (e: any) {
-                              setError(e.message)
-                            } finally {
-                              setAnalyzingContractor(null)
-                            }
-                          }}
+                          onClick={() => runAnalysis(c.id)}
                         >
                           <Shield className="h-3.5 w-3.5" />
                           Analyze Risk
@@ -956,6 +1169,7 @@ export function ProjectSetupPage() {
             )}
           </div>
         )
+      }
 
       case 'Summary':
         return <ProjectSummary phase={phase} data={{
@@ -1124,7 +1338,7 @@ function WarrantyPerContractor({
               <div className="flex items-center gap-3">
                 <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Warranty (years)</label>
                 <Input
-                  type="number"
+                  inputMode="numeric"
                   placeholder={`${defaultYears} (default)`}
                   value={contractorOverride?.duration || ''}
                   onChange={e => {
@@ -1153,7 +1367,7 @@ function WarrantyPerContractor({
                         <div key={ci} className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground w-32 truncate">{comp.component || `Component ${ci + 1}`}</span>
                           <Input
-                            type="number"
+                            inputMode="numeric"
                             placeholder={`${contractorOverride?.duration || defaultYears} (default)`}
                             value={compOverride?.duration || ''}
                             onChange={e => {
@@ -1185,6 +1399,186 @@ function WarrantyPerContractor({
 }
 
 // ─── Summary Component ─────────────────────────────────────────
+// ─── Work Package Step ─────────────────────────────────────────
+const WP_TYPES = ['WTG', 'Foundations', 'IAC', 'Offshore Substation', 'Export Cable'] as const
+const FOUNDATION_TYPES: { value: FoundationType; label: string }[] = [
+  { value: 'monopile', label: 'Monopile' },
+  { value: 'jackets', label: 'Jackets' },
+  { value: 'floating', label: 'Floating' },
+  { value: 'gbs', label: 'GBS (Gravity-Based)' },
+]
+const CONTRACT_SPLITS: ContractSplit[] = ['EPCI', 'Supply', 'T&I']
+
+function WorkPackageStep({ workPackages, onChange }: { workPackages: WorkPackage[]; onChange: (wps: WorkPackage[]) => void }) {
+
+  function isWPActive(type: string) {
+    return workPackages.some(wp => wp.type === type)
+  }
+
+  function toggleWP(type: typeof WP_TYPES[number]) {
+    if (isWPActive(type)) {
+      onChange(workPackages.filter(wp => wp.type !== type))
+    } else {
+      onChange([...workPackages, {
+        id: crypto.randomUUID(),
+        type,
+        contractSplits: [],
+        ...(type === 'Foundations' ? { foundationTypes: [], transitionPiece: null } : {}),
+      }])
+    }
+  }
+
+  function updateWP(type: string, updates: Partial<WorkPackage>) {
+    onChange(workPackages.map(wp => wp.type === type ? { ...wp, ...updates } : wp))
+  }
+
+  function toggleContractSplit(type: string, split: ContractSplit) {
+    const wp = workPackages.find(w => w.type === type)
+    if (!wp) return
+    const has = wp.contractSplits.includes(split)
+    // EPCI is exclusive — if selecting EPCI, clear Supply/T&I. If selecting Supply or T&I, clear EPCI
+    let newSplits: ContractSplit[]
+    if (split === 'EPCI') {
+      newSplits = has ? [] : ['EPCI']
+    } else {
+      newSplits = has
+        ? wp.contractSplits.filter(s => s !== split)
+        : [...wp.contractSplits.filter(s => s !== 'EPCI'), split]
+    }
+    updateWP(type, { contractSplits: newSplits })
+  }
+
+  function toggleFoundationType(ft: FoundationType) {
+    const wp = workPackages.find(w => w.type === 'Foundations')
+    if (!wp) return
+    const types = wp.foundationTypes ?? []
+    const has = types.includes(ft)
+    const newTypes = has ? types.filter(t => t !== ft) : [...types, ft]
+    // If removing monopile, clear transition piece fields
+    const updates: Partial<WorkPackage> = { foundationTypes: newTypes }
+    if (ft === 'monopile' && has) {
+      updates.hasTransitionPiece = null
+      updates.transitionPieceSeparateContract = null
+    }
+    updateWP('Foundations', updates)
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Select the major work packages for this project and their contract structure.
+      </p>
+
+      {WP_TYPES.map(type => {
+        const active = isWPActive(type)
+        const wp = workPackages.find(w => w.type === type)
+        return (
+          <div key={type} className={`rounded-lg border-2 transition-all ${active ? 'border-primary bg-primary/5' : 'border-border'}`}>
+            {/* Toggle header */}
+            <button
+              type="button"
+              onClick={() => toggleWP(type)}
+              className="flex w-full items-center gap-3 p-3 text-left"
+            >
+              <div className={`flex h-5 w-5 items-center justify-center rounded border-2 text-xs ${
+                active ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30'
+              }`}>
+                {active && '✓'}
+              </div>
+              <span className="text-sm font-medium">{type}</span>
+            </button>
+
+            {/* Options when active */}
+            {active && wp && (
+              <div className="border-t px-3 pb-3 pt-2 space-y-3">
+                {/* Contract split */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Contract Structure</label>
+                  <div className="flex gap-2">
+                    {CONTRACT_SPLITS.map(split => (
+                      <button
+                        key={split}
+                        type="button"
+                        onClick={() => toggleContractSplit(type, split)}
+                        className={`rounded-md px-3 py-1.5 text-xs font-medium border transition-all ${
+                          wp.contractSplits.includes(split)
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border text-muted-foreground hover:border-primary/30'
+                        }`}
+                      >
+                        {split}
+                      </button>
+                    ))}
+                  </div>
+                  {wp.contractSplits.includes('Supply') && wp.contractSplits.includes('T&I') && (
+                    <p className="text-xs text-muted-foreground mt-1">Separate Supply and T&I contracts</p>
+                  )}
+                  {wp.contractSplits.includes('EPCI') && (
+                    <p className="text-xs text-muted-foreground mt-1">Single EPCI contract covering engineering, procurement, construction & installation</p>
+                  )}
+                </div>
+
+                {/* Foundations-specific: foundation type */}
+                {type === 'Foundations' && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Foundation Type(s)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {FOUNDATION_TYPES.map(ft => (
+                        <button
+                          key={ft.value}
+                          type="button"
+                          onClick={() => toggleFoundationType(ft.value)}
+                          className={`rounded-md px-3 py-1.5 text-xs font-medium border transition-all ${
+                            (wp.foundationTypes ?? []).includes(ft.value)
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border text-muted-foreground hover:border-primary/30'
+                          }`}
+                        >
+                          {ft.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Transition piece for monopile */}
+                    {(wp.foundationTypes ?? []).includes('monopile') && (
+                      <div className="mt-2 space-y-2">
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Does the monopile have a Transition Piece?</label>
+                          <div className="flex gap-2">
+                            <OptionButton selected={wp.hasTransitionPiece === true} onClick={() => updateWP('Foundations', { hasTransitionPiece: true })}>
+                              Yes — with Transition Piece
+                            </OptionButton>
+                            <OptionButton selected={wp.hasTransitionPiece === false} onClick={() => updateWP('Foundations', { hasTransitionPiece: false, transitionPieceSeparateContract: null })}>
+                              No — monopile only
+                            </OptionButton>
+                          </div>
+                        </div>
+                        {wp.hasTransitionPiece && (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Is the Transition Piece under a separate contractor?</label>
+                            <div className="flex gap-2">
+                              <OptionButton selected={wp.transitionPieceSeparateContract === true} onClick={() => updateWP('Foundations', { transitionPieceSeparateContract: true })}>
+                                Yes — separate TP contractor
+                              </OptionButton>
+                              <OptionButton selected={wp.transitionPieceSeparateContract === false} onClick={() => updateWP('Foundations', { transitionPieceSeparateContract: false })}>
+                                No — same contractor as monopile
+                              </OptionButton>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function RiskBadge({ rating }: { rating: string }) {
   const config = {
     High: { className: 'bg-red-100 text-red-800 border-red-200', icon: XCircle },

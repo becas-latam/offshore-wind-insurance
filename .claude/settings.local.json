@@ -55,7 +55,14 @@
       "Bash(/c/Python311/python.exe -c \"\nimport sys, time\nsys.stdout.reconfigure\\(line_buffering=True\\)\nsys.path.insert\\(0, 'python_functions/rag'\\)\n\nprint\\('1. Importing...', flush=True\\)\nfrom chunker import chunk_transcript\nfrom embedder import get_openai_client, embed_texts\nfrom vector_store import get_client, upsert_chunks\n\nprint\\('2. Parsing file...', flush=True\\)\nchunks = chunk_transcript\\(r'C:\\\\Users\\\\User\\\\Dropbox\\\\Know\\\\Protokollen ABU\\\\Protokollen\\\\claims\\\\14022024 VV Reim.txt'\\)\nprint\\(f'   {len\\(chunks\\)} chunks', flush=True\\)\n\nprint\\('3. Getting OpenAI client...', flush=True\\)\noc = get_openai_client\\(\\)\n\nprint\\('4. Embedding...', flush=True\\)\nt0 = time.time\\(\\)\ntexts = [c.text for c in chunks]\nvectors = embed_texts\\(texts, oc\\)\nprint\\(f'   Done in {time.time\\(\\)-t0:.1f}s', flush=True\\)\n\nprint\\('5. Upserting to Qdrant...', flush=True\\)\nt0 = time.time\\(\\)\npayloads = [c.to_dict\\(\\) for c in chunks]\nupsert_chunks\\(payloads, vectors, get_client\\(\\)\\)\nprint\\(f'   Done in {time.time\\(\\)-t0:.1f}s', flush=True\\)\n\nprint\\('SUCCESS', flush=True\\)\n\" 2>&1)",
       "Bash(/c/Python311/python.exe -c \"\nfrom dotenv import load_dotenv; load_dotenv\\(\\)\nimport os\nfrom qdrant_client import QdrantClient\nclient = QdrantClient\\(url=os.getenv\\('QDRANT_URL'\\), api_key=os.getenv\\('QDRANT_API_KEY'\\)\\)\ninfo = client.get_collection\\('transcripts'\\)\nprint\\(f'Points: {info.points_count}'\\)\nprint\\(f'Status: {info.status.value}'\\)\n\" 2>&1)",
       "WebSearch",
-      "Bash(xargs -I {} basename {})"
+      "Bash(xargs -I {} basename {})",
+      "Bash(python3 -c \":*)",
+      "Bash(where py:*)",
+      "Bash(where python3:*)",
+      "Bash(where python:*)",
+      "Read(//c/Users/User/AppData/Local/Programs/**)",
+      "Bash(ls /c/Python*/python.exe)",
+      "Bash(py -c \":*)"
     ]
   }
 }
